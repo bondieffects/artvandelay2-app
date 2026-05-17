@@ -156,7 +156,10 @@ function useFirmwareUpdater() {
   const [status, setStatus] = React.useState("Idle");
   const [log, setLog] = React.useState([]);
   const inputRef = React.useRef(null);
+  const outputIdRef = React.useRef(outputId);
   const waitersRef = React.useRef([]);
+
+  React.useEffect(() => { outputIdRef.current = outputId; }, [outputId]);
 
   const addLog = React.useCallback((type, msg) => {
     const t = new Date().toLocaleTimeString([], { hour12: false });
@@ -168,8 +171,10 @@ function useFirmwareUpdater() {
     const nextInputs = Array.from(midiAccess.inputs.values());
     setOutputs(nextOutputs);
     setInputs(nextInputs);
-    setOutputId((id) => id || nextOutputs[0]?.id || "");
-    setInputId((id) => id || nextInputs[0]?.id || "");
+    // If the currently selected port has disappeared (e.g. device rebooted between DFU and app
+    // mode), fall back to the first available port rather than keeping a stale ID.
+    setOutputId((id) => (id && nextOutputs.some((p) => p.id === id)) ? id : (nextOutputs[0]?.id || ""));
+    setInputId((id) => (id && nextInputs.some((p) => p.id === id)) ? id : (nextInputs[0]?.id || ""));
   }, []);
 
   const requestMidi = React.useCallback(async () => {
@@ -226,7 +231,9 @@ function useFirmwareUpdater() {
 
   const ping = React.useCallback(async () => {
     const midiAccess = access ?? await requestMidi();
-    const output = midiAccess.outputs.get(outputId);
+    // Use the ref rather than the closure-captured outputId: enterDfu calls ping after an
+    // await sleep(), during which the device reboots and outputId may have changed.
+    const output = midiAccess.outputs.get(outputIdRef.current);
     if (!output) throw new Error("Select a MIDI output.");
     setStatus("Pinging bootloader");
     for (let attempt = 1; attempt <= 6; attempt++) {
@@ -241,7 +248,7 @@ function useFirmwareUpdater() {
       }
     }
     return false;
-  }, [access, addLog, outputId, requestMidi, send, waitFor]);
+  }, [access, addLog, requestMidi, send, waitFor]);
 
   const enterDfu = React.useCallback(async () => {
     const midiAccess = access ?? await requestMidi();
