@@ -183,6 +183,7 @@ function PhosphorWired() {
             <WiredConfig config={config} setConfig={setConfig} onCommit={commitConfig}
               connected={connected} />
           )}
+          {tab === "firmware" && <FirmwareUpdaterPanel />}
           {tab === "console" && <PhConsole log={log.length ? log : MOCK_LOG} />}
         </div>
       </div>

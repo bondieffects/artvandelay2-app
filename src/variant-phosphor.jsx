@@ -39,7 +39,7 @@ function PhPanel({ children, style, title, rightMeta }) {
 }
 
 function PhTab({ tab, setTab }) {
-  const tabs = [["live","LIVE"],["presets","PRESETS"],["config","CONFIG"],["console","CONSOLE"]];
+  const tabs = [["live","LIVE"],["presets","PRESETS"],["config","CONFIG"],["firmware","FIRMWARE"],["console","CONSOLE"]];
   return (
     <div style={{ display: "flex", borderBottom: `1px solid ${PH.rule}` }}>
       {tabs.map(([k,l])=>{

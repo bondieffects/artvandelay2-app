@@ -3,25 +3,26 @@
 ## Current state (friends / internal)
 
 The UI is served with a local Python server and connects to the pedal over Web
-Serial. This is fine for sharing with a small group of trusted users who can
-follow a one-liner instruction. No hosted infrastructure, no liability.
+Serial for editing and Web MIDI SysEx for firmware updates. This is fine for
+sharing with a small group of trusted users who can follow a one-liner
+instruction. No hosted infrastructure, no liability.
 
 ```
-python -m http.server -d web 8000
+python -m http.server 8000
 # open http://localhost:8000 in Chrome or Edge
 ```
 
-Web Serial is Chromium-only (Chrome, Edge, Opera desktop). Firefox and Safari
-do not support it.
+Web Serial and Web MIDI SysEx are Chromium-only in practice (Chrome, Edge,
+Opera desktop). Firefox and Safari do not support this workflow.
 
 ---
 
 ## Why `file://` will never work
 
-Web Serial, WebUSB, and WebHID all require a **secure context** — either
-`https://` with a real cert, or `localhost`. The browser enforces this at the
-API level; there is no workaround. A double-click HTML file (`file://`) is not
-a secure context and will never have access to these APIs.
+Web Serial, Web MIDI SysEx, WebUSB, and WebHID all require a **secure context**
+— either `https://` with a real cert, or `localhost`. The browser enforces this
+at the API level; there is no workaround. A double-click HTML file (`file://`)
+is not a secure context and will never have access to these APIs.
 
 ---
 
@@ -114,6 +115,7 @@ requires external hosting, which reintroduces liability.
 | Decision | Rationale |
 |---|---|
 | Web Serial over WebUSB | No firmware changes needed; same browser support; debuggable |
+| Web MIDI for bootloader updates | Matches the existing MIDI SysEx bootloader and allows browser-controlled pacing |
 | Local server over hosted page | No liability, no GDPR, no servers to maintain |
 | Go binary for future distribution | Single file, no runtime deps, small, cross-platform |
 | Defer companion exe | Current audience is friends; Python one-liner is acceptable |
