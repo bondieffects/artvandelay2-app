@@ -179,6 +179,7 @@ function useFirmwareUpdater() {
     setAccess(midiAccess);
     refreshPorts(midiAccess);
     addLog("INFO", "Web MIDI SysEx access granted.");
+    return midiAccess;
   }, [addLog, refreshPorts]);
 
   const onMidiMessage = React.useCallback((event) => {
@@ -224,8 +225,7 @@ function useFirmwareUpdater() {
   }, []);
 
   const ping = React.useCallback(async () => {
-    if (!access) await requestMidi();
-    const midiAccess = access || await navigator.requestMIDIAccess({ sysex: true });
+    const midiAccess = access ?? await requestMidi();
     const output = midiAccess.outputs.get(outputId);
     if (!output) throw new Error("Select a MIDI output.");
     setStatus("Pinging bootloader");
@@ -244,8 +244,7 @@ function useFirmwareUpdater() {
   }, [access, addLog, outputId, requestMidi, send, waitFor]);
 
   const enterDfu = React.useCallback(async () => {
-    if (!access) await requestMidi();
-    const midiAccess = access || await navigator.requestMIDIAccess({ sysex: true });
+    const midiAccess = access ?? await requestMidi();
     const output = midiAccess.outputs.get(outputId);
     if (!output) throw new Error("Select a MIDI output.");
     setStatus("Requesting DFU mode");
@@ -314,6 +313,7 @@ function useFirmwareUpdater() {
 function FirmwareUpdaterPanel() {
   const up = useFirmwareUpdater();
   const [error, setError] = React.useState(null);
+  const [confirmFlash, setConfirmFlash] = React.useState(false);
 
   const run = (fn) => async (...args) => {
     setError(null);
@@ -393,13 +393,30 @@ function FirmwareUpdaterPanel() {
                 opacity: up.busy || !up.access ? 0.45 : 1 }}>
               ENTER DFU
             </button>
-            <button onClick={run(up.flash)} disabled={up.busy || !up.access || !up.image}
-              style={{ border: `1px solid ${PH.accent}`, background: PH.accent,
-                color: PH.bg, fontFamily: PH.mono, fontWeight: 800, letterSpacing: "0.2em",
-                padding: "13px 18px", cursor: up.busy ? "wait" : "pointer",
-                opacity: up.busy || !up.access || !up.image ? 0.45 : 1 }}>
-              FLASH FIRMWARE
-            </button>
+            {confirmFlash ? (
+              <>
+                <button onClick={() => { setConfirmFlash(false); run(up.flash)(); }}
+                  style={{ border: `1px solid ${PH.danger}`, background: PH.danger,
+                    color: PH.bg, fontFamily: PH.mono, fontWeight: 800, letterSpacing: "0.2em",
+                    padding: "13px 18px", cursor: "pointer" }}>
+                  CONFIRM FLASH
+                </button>
+                <button onClick={() => setConfirmFlash(false)}
+                  style={{ border: `1px solid ${PH.rule}`, background: "transparent",
+                    color: PH.inkDim, fontFamily: PH.mono, letterSpacing: "0.16em",
+                    padding: "13px 18px", cursor: "pointer" }}>
+                  CANCEL
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmFlash(true)} disabled={up.busy || !up.access || !up.image}
+                style={{ border: `1px solid ${PH.accent}`, background: PH.accent,
+                  color: PH.bg, fontFamily: PH.mono, fontWeight: 800, letterSpacing: "0.2em",
+                  padding: "13px 18px", cursor: up.busy ? "wait" : "pointer",
+                  opacity: up.busy || !up.access || !up.image ? 0.45 : 1 }}>
+                FLASH FIRMWARE
+              </button>
+            )}
           </div>
         </PhPanel>
 

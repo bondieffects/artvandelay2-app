@@ -13,7 +13,7 @@ const PARAM_CATALOG = [
     options: ["Sine","Triangle","S-Shaped","Exponential","Smooth Rand","Skewed Tri","Trapezoid"] },
 ];
 
-const WAVEFORM_LABELS = ["Sine","Triangle","S-Shaped","Exponential","Smooth Rand","Skewed Tri","Trapezoid"];
+const WAVEFORM_LABELS = PARAM_CATALOG.find((p) => p.key === "lfo_waveform").options;
 
 const MOCK_DEVICE = {
   device: "ArtVanDelay2",
@@ -147,6 +147,9 @@ function useLocalState(key, initial) {
 // ── LfoScope — canvas oscilloscope with configurable skin ──
 function LfoScope({ waveformId, rate, depth, width, height, skin = "phosphor" }) {
   const ref = React.useRef(null);
+  const animParamsRef = React.useRef({ waveformId, rate, depth });
+  // Update synchronously every render so the RAF loop reads current values without restarting.
+  animParamsRef.current = { waveformId, rate, depth };
 
   React.useEffect(() => {
     const canvas = ref.current;
@@ -197,6 +200,7 @@ function LfoScope({ waveformId, rate, depth, width, height, skin = "phosphor" })
     const midY = padY + gh / 2;
 
     const draw = (now) => {
+      const { waveformId, rate, depth } = animParamsRef.current;
       const phaseOffset = ((now - start) / 1000) * lfoRateParamToHz(rate);
       S.bg(ctx);
 
@@ -247,7 +251,7 @@ function LfoScope({ waveformId, rate, depth, width, height, skin = "phosphor" })
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [waveformId, rate, depth, width, height, skin]);
+  }, [width, height, skin]);
 
   return <canvas ref={ref} style={{ display: "block", borderRadius: 6 }} />;
 }

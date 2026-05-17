@@ -85,6 +85,7 @@ function makeTransport() {
     input = null;
     output = null;
     access = null;
+    commandChain = Promise.resolve();
     for (const waiter of pending.values()) {
       clearTimeout(waiter.timer);
       waiter.reject(new Error("MIDI disconnected."));

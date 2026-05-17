@@ -19,6 +19,8 @@ function PhosphorWired() {
   const [selected, setSelected] = React.useState(2);
   const [config, setConfig]   = React.useState(MOCK_CONFIG);
   const [error, setError]     = React.useState(null);
+  const loadedSlotsRef = React.useRef(new Set());
+  const deviceConfigRef = React.useRef(MOCK_CONFIG);
 
   // ── Refreshers ──────────────────────────────────────────
   const refreshParams = React.useCallback(async () => {
@@ -47,6 +49,7 @@ function PhosphorWired() {
     try {
       const r = await transport.presetGet(slot);
       if (r && r.preset) {
+        loadedSlotsRef.current.add(slot);
         setPresets((P) => {
           const n = P.slice();
           n[slot] = { ...n[slot], ...r.preset };
@@ -57,7 +60,13 @@ function PhosphorWired() {
   }, [transport]);
 
   const refreshConfig = React.useCallback(async () => {
-    try { const c = await transport.configGet(); if (c) setConfig((C) => ({ ...C, ...c })); }
+    try {
+      const c = await transport.configGet();
+      if (c) {
+        deviceConfigRef.current = { ...deviceConfigRef.current, ...c };
+        setConfig((C) => ({ ...C, ...c }));
+      }
+    }
     catch (e) { setError(e.message); }
   }, [transport]);
 
@@ -69,6 +78,11 @@ function PhosphorWired() {
     await refreshPresets();
     await refreshConfig();
   }, [transport, refreshParams, refreshPresets, refreshConfig]);
+
+  // ── Clear loaded-slot cache on disconnect ───────────────
+  React.useEffect(() => {
+    if (!connected) loadedSlotsRef.current.clear();
+  }, [connected]);
 
   // ── Connect / disconnect ────────────────────────────────
   const onToggle = React.useCallback(async () => {
@@ -83,19 +97,20 @@ function PhosphorWired() {
   React.useEffect(() => {
     if (!connected) return;
     let stopped = false;
+    let timerId;
     const tick = async () => {
       if (stopped) return;
       try { const v = await transport.paramGet(); if (v && !stopped) setLive((L) => ({ ...L, ...v })); }
       catch { /* transient */ }
+      if (!stopped) timerId = setTimeout(tick, 500);
     };
-    const id = setInterval(tick, 500);
-    return () => { stopped = true; clearInterval(id); };
+    timerId = setTimeout(tick, 500);
+    return () => { stopped = true; clearTimeout(timerId); };
   }, [connected, transport]);
 
   // ── Lazy-load per-slot detail when user selects a slot ──
   React.useEffect(() => {
-    if (connected && presets[selected] && presets[selected].valid
-        && presets[selected].delay_time_ms === undefined) {
+    if (connected && presets[selected]?.valid && !loadedSlotsRef.current.has(selected)) {
       refreshSelected(selected);
     }
   }, [connected, selected, presets, refreshSelected]);
@@ -118,10 +133,10 @@ function PhosphorWired() {
     catch (e) { setError(e.message); }
   }, [transport, refreshPresets, refreshSelected]);
 
-  // ── Config push (one field at a time; firmware echoes full config) ──
+  // ── Config push — only fields that differ from the last device fetch ──
   const commitConfig = React.useCallback(async (pendingConfig) => {
     setError(null);
-    const pairs = [
+    const allPairs = [
       ["expression_enabled",         String(pendingConfig.expression_enabled)],
       ["expression_assignment",      String(pendingConfig.expression_assignment)],
       ["expression_curve",           String(pendingConfig.expression_curve)],
@@ -129,11 +144,16 @@ function PhosphorWired() {
       ["expression_calibration_min", String(pendingConfig.expression_calibration_min)],
       ["expression_calibration_max", String(pendingConfig.expression_calibration_max)],
     ];
+    const pairs = allPairs.filter(([k]) => String(pendingConfig[k]) !== String(deviceConfigRef.current[k]));
+    if (pairs.length === 0) return;
     try {
       for (const [k, v] of pairs) {
         const r = await transport.configSet(k, v);
         if (r && r.error) throw new Error(`${k}: ${r.error}`);
-        if (r) setConfig((C) => ({ ...C, ...r }));
+        if (r) {
+          deviceConfigRef.current = { ...deviceConfigRef.current, ...r };
+          setConfig((C) => ({ ...C, ...r }));
+        }
       }
     } catch (e) { setError(e.message); }
   }, [transport]);
@@ -145,16 +165,18 @@ function PhosphorWired() {
         delay_time_ms: 400, lfo_depth: 80, lfo_rate: 64,
         effect_level: 160, feedback: 90, tilt: 128,
         subdivision: 3, lfo_waveform: 0, expression: 0, bypass_state: 1 };
-  const setDraft = (d) => {
-    const n = presets.slice();
-    n[selected] = { ...d, valid: true };
-    setPresets(n);
-  };
+  const setDraft = React.useCallback((d) => {
+    setPresets((P) => {
+      const n = P.slice();
+      n[selected] = { ...d, valid: true };
+      return n;
+    });
+  }, [selected]);
 
   const fw = info.firmware || MOCK_DEVICE.firmware;
   const fwString = `${fw.major}.${fw.minor}.${fw.patch}`;
-  const serialString = info.board
-    ? `${info.board} · rev ${info.hardware_revision ?? 0}`
+  const serialString = connected
+    ? (info.board ? `${info.board} · rev ${info.hardware_revision ?? 0}` : "unknown")
     : MOCK_DEVICE.serial;
 
   return (
@@ -360,10 +382,10 @@ function WiredConfig({ config, setConfig, onCommit, connected }) {
             <option value="true">TRUE</option><option value="false">FALSE</option>
           </select>)}
         {fld("calibration_min",
-          <input type="number" value={config.expression_calibration_min} style={input}
+          <input type="number" min={0} max={4095} value={config.expression_calibration_min} style={input}
             onChange={(e) => setConfig({ ...config, expression_calibration_min: +e.target.value })}/>)}
         {fld("calibration_max",
-          <input type="number" value={config.expression_calibration_max} style={input}
+          <input type="number" min={0} max={4095} value={config.expression_calibration_max} style={input}
             onChange={(e) => setConfig({ ...config, expression_calibration_max: +e.target.value })}/>)}
       </div>
       <div style={{ marginTop: 28, padding: 14, border: `1px dashed ${PH.rule}`,

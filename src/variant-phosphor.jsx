@@ -71,39 +71,6 @@ function PhReadout({ label, value, unit, tone }) {
   );
 }
 
-function PhHeader({ connected, onToggle }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "16px 24px", borderBottom: `1px solid ${PH.rule}`, background: PH.bgAlt }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <div style={{ width: 10, height: 10, borderRadius: 5, background: connected ? PH.accent : PH.danger,
-          boxShadow: `0 0 10px ${connected ? PH.accent : PH.danger}` }} />
-        <div>
-          <div style={{ fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.3em",
-            color: PH.inkMute, textTransform: "uppercase" }}>Bondi Effects</div>
-          <div style={{ fontFamily: PH.serif, fontSize: 26, color: PH.accent, lineHeight: 1, marginTop: 4,
-            textShadow: "0 0 18px rgba(124,255,158,0.35)" }}>Art Van Delay 2</div>
-        </div>
-        <div style={{ fontFamily: PH.mono, fontSize: 10, color: PH.inkMute, letterSpacing: "0.15em",
-          marginLeft: 12, paddingLeft: 20, borderLeft: `1px solid ${PH.rule}` }}>
-          WEB EDITOR<br/>FW 1.4.2 · AVD2-0412
-        </div>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-        <div style={{ fontFamily: PH.mono, fontSize: 11, color: PH.inkDim, letterSpacing: "0.15em" }}>
-          LINK: <span style={{ color: connected ? PH.accent : PH.danger }}>
-            {connected ? "ESTABLISHED" : "SEVERED"}</span>
-        </div>
-        <button onClick={onToggle}
-          style={{ border: `1px solid ${PH.accent}`, background: connected ? "transparent" : PH.accent,
-            color: connected ? PH.accent : "#0a0d0a", fontFamily: PH.mono, fontSize: 11,
-            fontWeight: 700, letterSpacing: "0.2em", padding: "10px 18px", borderRadius: 2, cursor: "pointer" }}>
-          {connected ? "DISCONNECT" : "CONNECT"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function PhPedal({ preset, onChange }) {
   // Wireframe / schematic-style pedal rendering
@@ -240,133 +207,10 @@ function PhLive({ live, setLive }) {
   );
 }
 
-function PhPresets({ presets, selected, setSelected, draft, setDraft, activeSlot }) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 18 }}>
-      <PhPanel title="Bank · 16 slots" style={{ height: "fit-content" }}>
-        <div className="avd-scroll" style={{ maxHeight: 640, overflowY: "auto", margin: "-16px", padding: 12 }}>
-          {presets.map(p => {
-            const isSel = p.slot === selected;
-            const isAct = p.slot === activeSlot;
-            return (
-              <button key={p.slot} onClick={()=>setSelected(p.slot)}
-                style={{ display: "block", width: "100%", textAlign: "left",
-                  padding: "10px 12px", marginBottom: 2, cursor: "pointer",
-                  border: `1px solid ${isSel ? PH.accent : "transparent"}`,
-                  background: isSel ? PH.accentMute : "transparent",
-                  fontFamily: PH.mono }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10,
-                  color: PH.inkMute, letterSpacing: "0.16em" }}>
-                  <span>{String(p.slot).padStart(2,"0")}</span>
-                  {isAct && <span style={{ color: PH.accent }}>◉ ACTIVE</span>}
-                  {!p.valid && <span>∅ EMPTY</span>}
-                </div>
-                <div style={{ fontSize: 13, color: p.valid ? PH.ink : PH.inkMute, marginTop: 3 }}>
-                  {p.name}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </PhPanel>
-      <PhPanel title={`Slot ${String(selected).padStart(2,"0")} · ${draft.name}`}
-        rightMeta="◉ EDITING">
-        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 28, alignItems: "start" }}>
-          <PhPedal preset={draft} onChange={setDraft} />
-          <div>
-            <div style={{ fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.24em",
-              color: PH.inkMute, marginBottom: 10 }}>FIELD VALUES</div>
-            <div style={{ fontFamily: PH.mono, fontSize: 12, color: PH.ink }}>
-              {[
-                ["delay_time_ms", `${draft.delay_time_ms} ms`],
-                ["lfo_depth", `${draft.lfo_depth} (${lfoDepthParamToCents(draft.lfo_depth).toFixed(1)} ct)`],
-                ["lfo_rate", `${draft.lfo_rate} (${lfoRateParamToHz(draft.lfo_rate).toFixed(2)} Hz)`],
-                ["effect_level", draft.effect_level],
-                ["feedback", draft.feedback],
-                ["tilt", draft.tilt],
-                ["subdivision", ["1/1","1/2","1/3","1/4","1/6","1/8","1/16"][draft.subdivision]],
-                ["lfo_waveform", WAVEFORM_LABELS[draft.lfo_waveform]],
-                ["expression", draft.expression],
-                ["bypass_state", draft.bypass_state],
-              ].map(([k,v])=>(
-                <div key={k} style={{ display: "grid", gridTemplateColumns: "160px 1fr",
-                  padding: "7px 0", borderBottom: `1px dashed ${PH.rule}`, gap: 12 }}>
-                  <span style={{ color: PH.inkMute }}>{k}</span>
-                  <span style={{ color: PH.accent, textAlign: "right" }}>{v}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
-              <button style={{ flex: 1, border: `1px solid ${PH.accent}`, background: "transparent",
-                color: PH.accent, fontFamily: PH.mono, fontSize: 11, letterSpacing: "0.22em",
-                padding: "12px", cursor: "pointer" }}>LOAD TO DEVICE</button>
-              <button style={{ flex: 1, border: "none", background: PH.accent, color: "#0a0d0a",
-                fontFamily: PH.mono, fontSize: 11, letterSpacing: "0.22em", fontWeight: 700,
-                padding: "12px", cursor: "pointer" }}>WRITE TO SLOT</button>
-            </div>
-          </div>
-        </div>
-      </PhPanel>
-    </div>
-  );
-}
-
-function PhConfig({ config, setConfig }) {
-  const input = { background: "#0a0d0a", border: `1px solid ${PH.accentDim}`,
-    color: PH.accent, fontFamily: PH.mono, fontSize: 12, padding: "10px 12px",
-    letterSpacing: "0.08em", width: "100%" };
-  const fld = (label, el) => (
-    <div>
-      <div style={{ fontFamily: PH.mono, fontSize: 9, letterSpacing: "0.26em",
-        color: PH.inkMute, marginBottom: 6 }}>{label}</div>
-      {el}
-    </div>
-  );
-  return (
-    <PhPanel title="Expression · Calibration · Routing">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 18 }}>
-        {fld("expression_enabled",
-          <select value={config.expression_enabled} style={input}
-            onChange={e=>setConfig({...config, expression_enabled: e.target.value==="true"})}>
-            <option value="true">TRUE</option><option value="false">FALSE</option></select>)}
-        {fld("expression_assignment",
-          <select value={config.expression_assignment} style={input}
-            onChange={e=>setConfig({...config, expression_assignment: +e.target.value})}>
-            {PARAM_CATALOG.map(p=><option key={p.id} value={p.id}>[{p.id}] {p.label}</option>)}
-          </select>)}
-        {fld("expression_curve",
-          <select value={config.expression_curve} style={input}
-            onChange={e=>setConfig({...config, expression_curve: +e.target.value})}>
-            <option value="0">0 — LINEAR</option><option value="1">1 — LOGARITHMIC</option>
-            <option value="2">2 — EXPONENTIAL</option></select>)}
-        {fld("expression_auto_assign",
-          <select value={config.expression_auto_assign} style={input}
-            onChange={e=>setConfig({...config, expression_auto_assign: e.target.value==="true"})}>
-            <option value="true">TRUE</option><option value="false">FALSE</option></select>)}
-        {fld("calibration_min",
-          <input type="number" value={config.expression_calibration_min} style={input}
-            onChange={e=>setConfig({...config, expression_calibration_min: +e.target.value})}/>)}
-        {fld("calibration_max",
-          <input type="number" value={config.expression_calibration_max} style={input}
-            onChange={e=>setConfig({...config, expression_calibration_max: +e.target.value})}/>)}
-      </div>
-      <div style={{ marginTop: 28, padding: 14, border: `1px dashed ${PH.rule}`,
-        fontFamily: PH.mono, fontSize: 11, color: PH.inkDim, letterSpacing: "0.08em", lineHeight: 1.8 }}>
-        <span style={{color:PH.accent}}>▸</span> calibration range constrained to 0–4095 (12-bit ADC).<br/>
-        <span style={{color:PH.accent}}>▸</span> setting auto_assign=true will bind expression to the last-tweaked parameter.
-      </div>
-      <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-        <button style={{ border: `1px solid ${PH.accent}`, background: PH.accent,
-          color: "#0a0d0a", fontFamily: PH.mono, fontSize: 11, fontWeight: 700,
-          letterSpacing: "0.24em", padding: "12px 24px", cursor: "pointer" }}>COMMIT</button>
-      </div>
-    </PhPanel>
-  );
-}
 
 function PhConsole({ log }) {
   return (
-    <PhPanel title="Serial Traffic · JSON Shell" rightMeta="baud 115200 · RX/TX">
+    <PhPanel title="MIDI Traffic · JSON Shell" rightMeta="SysEx · RX/TX">
       <div style={{ background: "#050805", border: `1px solid ${PH.rule}`, padding: 16,
         fontFamily: PH.mono, fontSize: 12, lineHeight: 1.9, maxHeight: 520, overflowY: "auto" }}
         className="avd-scroll">
@@ -383,41 +227,8 @@ function PhConsole({ log }) {
   );
 }
 
-function Phosphor() {
-  const [tab, setTab] = React.useState("live");
-  const [connected, setConnected] = React.useState(true);
-  const [live, setLive] = React.useState(MOCK_LIVE);
-  const [presets, setPresets] = React.useState(MOCK_PRESETS);
-  const [selected, setSelected] = React.useState(2);
-  const [config, setConfig] = React.useState(MOCK_CONFIG);
-  const draft = presets[selected]?.valid ? presets[selected] :
-    { slot: selected, valid: false, name: "Empty", delay_time_ms: 400, lfo_depth: 80, lfo_rate: 64,
-      effect_level: 160, feedback: 90, tilt: 128, subdivision: 3, lfo_waveform: 0,
-      expression: 0, bypass_state: 1 };
-  const setDraft = d => { const n = presets.slice(); n[selected] = {...d, valid:true}; setPresets(n); };
-
-  return (
-    <div style={{ width: 1440, minHeight: 1080, background: PH.bg, color: PH.ink,
-      fontFamily: PH.sans, position: "relative" }}>
-      {/* subtle scanline overlay */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1,
-        backgroundImage: "repeating-linear-gradient(0deg, rgba(124,255,158,0.025), rgba(124,255,158,0.025) 1px, transparent 1px, transparent 3px)" }} />
-      <div style={{ position: "relative", zIndex: 2 }}>
-        <PhHeader connected={connected} onToggle={()=>setConnected(!connected)} />
-        <PhTab tab={tab} setTab={setTab} />
-        <div style={{ padding: 20 }}>
-          {tab === "live" && <PhLive live={live} setLive={setLive} />}
-          {tab === "presets" && <PhPresets presets={presets} selected={selected} setSelected={setSelected}
-            draft={draft} setDraft={setDraft} activeSlot={2} />}
-          {tab === "config" && <PhConfig config={config} setConfig={setConfig} />}
-          {tab === "console" && <PhConsole log={MOCK_LOG} />}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 Object.assign(window, {
-  Phosphor, PH, PhPanel, PhTab, PhReadout, PhHeader, PhPedal, PhKnob, PhPedalSelect,
-  PhLive, PhPresets, PhConfig, PhConsole,
+  PH, PhPanel, PhTab, PhReadout, PhPedal, PhKnob, PhPedalSelect,
+  PhLive, PhConsole,
 });
