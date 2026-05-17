@@ -1,167 +1,149 @@
-// web/src/transport.jsx
-// Web Serial wrapper for the Art Van Delay 2 JSON shell.
-// Protocol matches legacy web/app.js exactly.
+// Web MIDI SysEx transport for the Art Van Delay 2 editor protocol.
 //
-//   TX: newline-terminated ASCII. Commands are serialized through a promise chain
-//       so only one is in flight at a time. 3-second timeout per command.
-//   RX: newline-delimited JSON. Shell prompt lines ("artvandelay2:~$ …") ignored.
-//       Non-JSON lines go to the log as "serial" messages. Each JSON line
-//       resolves the oldest pending command.
-//
-// Commands (exactly as the firmware exposes them):
-//   web info                     → {device, firmware:{major,minor,patch,tweak}}
-//   web param get                → {delay_time_ms, lfo_depth, …, active_preset, preset_dirty}
-//   web preset list              → {active, dirty, slots:[{slot, valid}, …]}
-//   web preset get <slot>        → {active, dirty, preset:{slot, valid, …fields}}
-//   web preset load <slot>       → {...} (response echoes new state; or {error:"…"})
-//   web preset save <slot>       → {active, dirty, preset:{…}} (same shape as `get`)
-//   web config get               → {expression_enabled, expression_assignment, …}
-//   web config set <key> <value> → {...full config} or {error:"…"}
-//
-// No unsolicited push events, no `web param set` — live params only change
-// via `preset load` or firmware-side controls. Poll `web param get` to track them.
+// TX: F0 7D 10 <request-id> <ASCII command> F7
+// RX: F0 7D 11 <request-id> <ASCII JSON response> F7
+
+const WEB_MIDI = {
+  MFR_ID: 0x7d,
+  CMD_REQUEST: 0x10,
+  CMD_RESPONSE: 0x11,
+  CMD_EVENT: 0x12,
+};
 
 function makeTransport() {
-  let port = null;
-  let reader = null;
-  let writer = null;
-  let textEncoderStream = null;
-  let textDecoderStream = null;
-  let writableStreamClosed = null;
-  let readableStreamClosed = null;
-  let readLoopPromise = null;
-  let keepReading = false;
+  let access = null;
+  let input = null;
+  let output = null;
   let commandChain = Promise.resolve();
-  const pendingResolvers = [];
+  let nextRequestId = 1;
 
+  const pending = new Map();
   const subs = { log: new Set(), status: new Set() };
-  let status = "disconnected"; // disconnected | connecting | connected | error
+  let status = "disconnected";
 
   const emit = (kind, payload) => subs[kind].forEach((fn) => { try { fn(payload); } catch {} });
   const log = (type, msg) => emit("log", { t: stamp(), type, msg });
   const setStatus = (s, detail) => { status = s; emit("status", { status: s, detail }); };
 
-  // ── Open / close ─────────────────────────────────────────
-  async function connect({ baudRate = 115200 } = {}) {
-    if (!("serial" in navigator)) {
-      const err = new Error("Web Serial is not available in this browser.");
-      log("ERR", err.message);
-      setStatus("error", err.message);
-      throw err;
+  function choosePort(ports, preferredName) {
+    const art = ports.find((p) => /artvandelay|art van delay|bondi/i.test(`${p.name || ""} ${p.manufacturer || ""}`));
+    if (art) return art;
+    if (preferredName) {
+      const named = ports.find((p) => (p.name || "") === preferredName);
+      if (named) return named;
     }
-    if (port) return;
+    return ports[0] || null;
+  }
+
+  async function requestAccess() {
+    if (!navigator.requestMIDIAccess) {
+      throw new Error("Web MIDI is not available in this browser.");
+    }
+    access = await navigator.requestMIDIAccess({ sysex: true });
+    access.onstatechange = () => {
+      if (status === "connected") {
+        bindPorts();
+      }
+    };
+    return access;
+  }
+
+  function bindPorts() {
+    if (!access) return;
+    const inputs = Array.from(access.inputs.values());
+    const outputs = Array.from(access.outputs.values());
+    const nextInput = choosePort(inputs, input?.name);
+    const nextOutput = choosePort(outputs, output?.name);
+
+    if (input && input !== nextInput) input.onmidimessage = null;
+    input = nextInput;
+    output = nextOutput;
+    if (input) input.onmidimessage = onMidiMessage;
+  }
+
+  async function connect() {
+    if (status === "connected") return;
     setStatus("connecting");
     try {
-      port = await navigator.serial.requestPort();
-      await port.open({ baudRate });
-
-      textDecoderStream = new TextDecoderStream();
-      readableStreamClosed = port.readable.pipeTo(textDecoderStream.writable);
-      reader = textDecoderStream.readable.getReader();
-
-      textEncoderStream = new TextEncoderStream();
-      writableStreamClosed = textEncoderStream.readable.pipeTo(port.writable);
-      writer = textEncoderStream.writable.getWriter();
-
-      keepReading = true;
-      readLoopPromise = readLoop();
+      await requestAccess();
+      bindPorts();
+      if (!input || !output) {
+        throw new Error("No USB MIDI input/output pair found.");
+      }
       setStatus("connected");
-      log("INFO", "Serial port connected.");
+      log("INFO", `USB MIDI connected: ${output.name || output.id}`);
     } catch (e) {
+      await disconnect();
       setStatus("error", e.message);
       log("ERR", `Connect failed: ${e.message}`);
-      await hardTeardown();
       throw e;
     }
   }
 
   async function disconnect() {
-    if (!port) return;
-    keepReading = false;
-    log("INFO", "Disconnecting…");
-    try { reader && await reader.cancel(); } catch (e) { log("WARN", `Reader cancel: ${e.message}`); }
-    try { await readLoopPromise; } catch {}
-    await hardTeardown();
+    if (input) input.onmidimessage = null;
+    input = null;
+    output = null;
+    access = null;
+    for (const waiter of pending.values()) {
+      clearTimeout(waiter.timer);
+      waiter.reject(new Error("MIDI disconnected."));
+    }
+    pending.clear();
     setStatus("disconnected");
-    log("INFO", "Serial port closed.");
   }
 
-  async function hardTeardown() {
-    if (writer) {
-      try { await writer.close(); } catch {}
-      try { writer.releaseLock(); } catch {}
-      writer = null;
-    }
-    if (writableStreamClosed) { try { await writableStreamClosed; } catch {} writableStreamClosed = null; }
-    if (readableStreamClosed) { try { await readableStreamClosed; } catch {} readableStreamClosed = null; }
-    if (port) { try { await port.close(); } catch {} port = null; }
-    while (pendingResolvers.length) {
-      const { reject } = pendingResolvers.shift();
-      try { reject(new Error("Port closed")); } catch {}
-    }
-    reader = null;
-    textEncoderStream = null;
-    textDecoderStream = null;
-  }
+  function onMidiMessage(event) {
+    const data = Array.from(event.data || []);
+    if (data[0] !== 0xf0 || data[data.length - 1] !== 0xf7) return;
+    const payload = data.slice(1, -1);
+    if (payload[0] !== WEB_MIDI.MFR_ID) return;
 
-  // ── Read loop ────────────────────────────────────────────
-  async function readLoop() {
-    let buffer = "";
-    try {
-      while (keepReading && reader) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += value;
-        const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop() ?? "";
-        for (const raw of lines) handleIncomingLine(raw.trim());
-      }
-    } catch (e) {
-      log("WARN", `Read loop stopped: ${e.message}`);
-    } finally {
-      if (reader) { try { reader.releaseLock(); } catch {} reader = null; }
+    if (payload[1] === WEB_MIDI.CMD_RESPONSE) {
+      const requestId = payload[2];
+      const waiter = pending.get(requestId);
+      if (!waiter) return;
+      pending.delete(requestId);
+      clearTimeout(waiter.timer);
+      const text = asciiFromBytes(payload.slice(3));
+      log("RX", `< ${text}`);
+      try { waiter.resolve(JSON.parse(text)); }
+      catch { waiter.reject(new Error(`Invalid JSON response: ${text}`)); }
+      return;
+    }
+
+    if (payload[1] === WEB_MIDI.CMD_EVENT) {
+      log("MIDI", asciiFromBytes(payload.slice(2)));
     }
   }
 
-  function handleIncomingLine(line) {
-    if (!line) return;
-    // Ignore the Zephyr shell prompt lines.
-    if (line.startsWith("artvandelay2:~$")) return;
-
-    let parsed = null;
-    try { parsed = JSON.parse(line); }
-    catch { log("SERIAL", line); return; }
-
-    log("RX", `< ${line}`);
-    const resolver = pendingResolvers.shift();
-    if (resolver) resolver.resolve(parsed);
-    else log("WARN", `Unmatched JSON: ${line}`);
-  }
-
-  // ── Send / request (serialized via commandChain) ─────────
   function sendCommand(command) {
-    if (!port || !writer) return Promise.reject(new Error("Not connected."));
+    if (!output) return Promise.reject(new Error("Not connected."));
 
     commandChain = commandChain.then(async () => {
+      const requestId = nextRequestId;
+      nextRequestId = (nextRequestId + 1) & 0x7f;
+      if (nextRequestId === 0) nextRequestId = 1;
+
+      const frame = [0xf0, WEB_MIDI.MFR_ID, WEB_MIDI.CMD_REQUEST, requestId]
+        .concat(bytesFromAscii(command), [0xf7]);
+
       log("TX", `> ${command}`);
       const responsePromise = new Promise((resolve, reject) => {
-        pendingResolvers.push({ resolve, reject });
-        setTimeout(() => {
-          const idx = pendingResolvers.findIndex((e) => e.resolve === resolve);
-          if (idx >= 0) {
-            pendingResolvers.splice(idx, 1);
-            reject(new Error(`Timed out waiting for JSON response to "${command}"`));
-          }
+        const timer = setTimeout(() => {
+          pending.delete(requestId);
+          reject(new Error(`Timed out waiting for MIDI response to "${command}"`));
         }, 3000);
+        pending.set(requestId, { resolve, reject, timer });
       });
-      await writer.write(`${command}\n`);
+
+      output.send(frame);
       return responsePromise;
     });
 
     return commandChain;
   }
 
-  // ── High-level API — one method per documented command ─
   const api = {
     info:       () => sendCommand("web info"),
     paramGet:   () => sendCommand("web param get"),
@@ -171,6 +153,7 @@ function makeTransport() {
     presetSave: (slot) => sendCommand(`web preset save ${slot}`),
     configGet:  () => sendCommand("web config get"),
     configSet:  (key, value) => sendCommand(`web config set ${key} ${value}`),
+    rebootDfu:   () => sendCommand("web dfu"),
     sendCommand,
   };
 
@@ -186,14 +169,20 @@ function makeTransport() {
   };
 }
 
-// ── helpers ────────────────────────────────────────────────
+function bytesFromAscii(text) {
+  return Array.from(text, (ch) => ch.charCodeAt(0) & 0x7f);
+}
+
+function asciiFromBytes(bytes) {
+  return String.fromCharCode(...bytes.map((b) => b & 0x7f));
+}
+
 function stamp() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-// ── React hook ─────────────────────────────────────────────
 function useTransport() {
   const transportRef = React.useRef(null);
   if (!transportRef.current) transportRef.current = makeTransport();

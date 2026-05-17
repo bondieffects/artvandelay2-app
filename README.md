@@ -1,106 +1,88 @@
-# Art Van Delay 2 — Phosphor Lab
+# Art Van Delay 2 Web Editor
 
-Web UI for the Art Van Delay 2 firmware. Connects to the pedal over Web
-Serial for editing and Web MIDI SysEx for bootloader firmware updates.
-Served via GitHub Pages — no install required.
+Web UI for the Art Van Delay 2 firmware. The editor and firmware updater both
+use Web MIDI SysEx, so public builds no longer require Web Serial or USB CDC.
+The app is intended to be served from GitHub Pages over HTTPS.
 
-**Requires Chrome or Edge (desktop).** Web Serial and Web MIDI SysEx are not
-supported in Firefox or Safari.
+**Requires Chrome or Edge desktop.** Web MIDI SysEx is not supported in Firefox
+or Safari.
 
-> **Don't open `index.html` directly** — browsers block local file requests
-> needed to load the app. Use the GitHub Pages URL or a local server (see
-> below).
+## Build
+
+Install dependencies once:
+
+```bash
+npm install
+```
+
+Build the self-contained static site:
+
+```bash
+npm run build
+```
+
+Output goes to `dist/`. The build copies React, ReactDOM, Babel, and the same
+fonts previously loaded from Google Fonts into local `vendor/` and `fonts/`
+directories, so the hosted page does not call third-party CDNs.
 
 ## Files
 
 ```
 /
-  index.html             shell; loads React 18 + Babel + four source files
+  index.html             static shell; loads local vendor scripts and fonts
+  scripts/build.js       copies static assets into dist/
   src/
     shared.jsx           PARAM_CATALOG, MOCK_*, LFO math, LfoScope, Knob
-    variant-phosphor.jsx Phosphor Lab visual components (Ph* globals)
-    transport.jsx        Web Serial wrapper + useTransport() hook
-    firmware-updater.jsx Web MIDI SysEx firmware update flow
-    app.jsx              PhosphorWired — glues transport to UI
+    variant-phosphor.jsx visual components
+    transport.jsx        Web MIDI SysEx editor transport
+    firmware-updater.jsx Web MIDI SysEx bootloader update flow
+    app.jsx              customer-facing UI
 ```
 
-## Protocol (from legacy app.js)
+## Editor Protocol
 
-Newline-terminated ASCII TX, newline-delimited JSON RX at 115200 baud.
-Commands are serialized through a promise chain with a 3-second timeout
-per command.
+The normal app receives editor commands over USB MIDI SysEx:
 
-| TX                                 | RX                                                     |
-|------------------------------------|--------------------------------------------------------|
-| `web info`                         | `{device, firmware:{major,minor,patch,tweak}}`         |
-| `web param get`                    | full live params incl. `active_preset`, `preset_dirty` |
-| `web preset list`                  | `{active, dirty, slots:[{slot, valid}]}`               |
-| `web preset get <slot>`            | `{active, dirty, preset:{…full fields}}`               |
-| `web preset load <slot>`           | `{ok:true,slot:N}` or `{error:"…"[,slot:N][,code:N]}` |
-| `web preset save <slot>`           | `{ok:true,slot:N}` or `{error:"…"[,code:N]}`           |
-| `web config get`                   | full config                                            |
-| `web config set <key> <value>`     | full config (or `{error}`)                             |
+```
+Browser -> Pedal: F0 7D 10 <request-id> <ASCII command> F7
+Pedal -> Browser: F0 7D 11 <request-id> <ASCII JSON response> F7
+```
 
-Shell prompt lines (`artvandelay2:~$ …`) are filtered out.
-No unsolicited events. **No `web param set`** — live params are read-only;
-they change only via `preset load` or physical knob movement.
+Supported commands:
 
-## Runtime behavior
+| TX | RX |
+|---|---|
+| `web info` | `{device, firmware, transport:"usb_midi", ...}` |
+| `web param get` | full live params incl. `active_preset`, `preset_dirty` |
+| `web preset list` | `{active, dirty, slots:[{slot, valid}]}` |
+| `web preset get <slot>` | `{active, dirty, preset:{...full fields}}` |
+| `web preset load <slot>` | `{ok:true,slot:N}` or `{error:"..."}` |
+| `web preset save <slot>` | `{ok:true,slot:N}` or `{error:"..."}` |
+| `web config get` | full expression config |
+| `web config set <key> <value>` | full config or `{error:"..."}` |
+| `web dfu` | asks the app to reboot into bootloader DFU mode |
 
-- **Connect** → `navigator.serial.requestPort()` → open @ 115200 → run
-  `info` → `param get` → `preset list` → `config get` in sequence.
-- **Live tab** polls `web param get` at 2 Hz. Tracks physical knob turns
-  on the pedal. Knob drags in the UI are local-only (next poll overwrites
-  them) — as expected, since firmware exposes no live setter.
-- **Presets tab** · **LOAD** sends `preset load <slot>` and refreshes all
-  state. **WRITE** sends `preset save <slot>` (commits current live buffer
-  to the slot). Selecting an unloaded valid slot lazy-fetches it via
-  `preset get`.
-- **Config tab** · **COMMIT** pushes each changed field with
-  `config set <key> <value>`. Firmware echoes the full config, which
-  updates state. Stops at first error.
-- **Console tab** mirrors the transport's live TX/RX/INFO/WARN/ERR log
-  (capped at 500 lines). Falls back to `MOCK_LOG` before first connect.
-- **Firmware tab** asks for Web MIDI SysEx permission, pings the MIDI
-  bootloader, streams a signed firmware image in 256-byte SysEx blocks, then
-  sends the HMAC commit frame.
+The app firmware also accepts runtime MIDI CC/program-change control over the
+same USB MIDI port.
 
-## Firmware updates
+## Firmware Updates
 
 The updater expects a signed firmware binary produced by the bootloader repo:
 
-```
+```bash
 python3 tools/sign_firmware.py zephyr.bin -o artvandelay2_signed.bin
 ```
 
-Before pressing **FLASH FIRMWARE**:
+From app mode, press **ENTER DFU** in the Firmware tab. Then choose the signed
+`.bin` file and press **FLASH FIRMWARE**.
 
-- Put the pedal in DFU mode.
-- Select the MIDI input and output for the same SysEx-capable MIDI interface.
-- Choose the signed `.bin` file, not the raw Zephyr image.
-
-The browser updater uses the same conservative pacing as the Python flasher:
+The browser updater uses conservative DIN-safe pacing:
 
 - 120 ms minimum between block frames.
 - 400 ms after the first block of each 2 KB flash page.
 
-This is intentional. Some USB-to-DIN MIDI paths accept SysEx data faster than
-the physical 31.25 kbaud DIN link can drain, which can corrupt repeat firmware
-updates without explicit pacing.
+## Hosting
 
-## Serving
-
-Web Serial and Web MIDI SysEx require a secure context:
-`http://localhost:<port>` or `https://` with a real cert. `file://` will not
-work.
-
-```
-python -m http.server 8000
-# then visit http://localhost:8000
-```
-
-## Browser support
-
-Chrome, Edge, Opera (desktop). Firefox and Safari don't ship the required Web
-Serial/Web MIDI SysEx APIs; the app surfaces clear errors when browser support
-is missing.
+Serve the contents of `dist/` from GitHub Pages. Web MIDI SysEx requires a
+secure context, so use HTTPS or `http://localhost:<port>` for development.
+`file://` will not work.

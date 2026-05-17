@@ -68,6 +68,15 @@ function fwMakePing() {
   return new Uint8Array([0xf0, FW_PROTO.MFR_ID, FW_PROTO.CMD_PING, 0xf7]);
 }
 
+function fwMakeEnterDfu() {
+  const text = "web dfu";
+  const frame = new Uint8Array(4 + text.length + 1);
+  frame.set([0xf0, FW_PROTO.MFR_ID, 0x10, 0x01], 0);
+  for (let i = 0; i < text.length; i++) frame[4 + i] = text.charCodeAt(i) & 0x7f;
+  frame[frame.length - 1] = 0xf7;
+  return frame;
+}
+
 function fwMakeBlockFrame(blockNo, totalBlocks, targetAddr, data) {
   const raw = new Uint8Array(268);
   fwU16be(raw, 0, blockNo);
@@ -234,6 +243,18 @@ function useFirmwareUpdater() {
     return false;
   }, [access, addLog, outputId, requestMidi, send, waitFor]);
 
+  const enterDfu = React.useCallback(async () => {
+    if (!access) await requestMidi();
+    const midiAccess = access || await navigator.requestMIDIAccess({ sysex: true });
+    const output = midiAccess.outputs.get(outputId);
+    if (!output) throw new Error("Select a MIDI output.");
+    setStatus("Requesting DFU mode");
+    send(output, fwMakeEnterDfu());
+    addLog("TX", "web dfu");
+    await sleep(1800);
+    await ping();
+  }, [access, addLog, outputId, ping, requestMidi, send]);
+
   const loadFile = React.useCallback(async (file) => {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const parsed = fwParseImage(bytes);
@@ -286,7 +307,7 @@ function useFirmwareUpdater() {
 
   return {
     access, outputs, inputs, outputId, setOutputId, inputId, setInputId,
-    image, busy, progress, status, log, requestMidi, loadFile, flash,
+    image, busy, progress, status, log, requestMidi, loadFile, enterDfu, flash,
   };
 }
 
@@ -329,14 +350,14 @@ function FirmwareUpdaterPanel() {
         <PhPanel title="Web MIDI Transfer" rightMeta="SysEx required">
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 12, alignItems: "end" }}>
             <label style={{ display: "grid", gap: 6, fontFamily: PH.mono, fontSize: 10, color: PH.inkMute }}>
-              MIDI INPUT
+              FROM PEDAL · MIDI INPUT
               <select value={up.inputId} onChange={(e) => up.setInputId(e.target.value)}
                 disabled={up.busy || !up.access} style={inputStyle}>
                 {up.inputs.map((p) => <option key={p.id} value={p.id}>{p.name || p.id}</option>)}
               </select>
             </label>
             <label style={{ display: "grid", gap: 6, fontFamily: PH.mono, fontSize: 10, color: PH.inkMute }}>
-              MIDI OUTPUT
+              TO PEDAL · MIDI OUTPUT
               <select value={up.outputId} onChange={(e) => up.setOutputId(e.target.value)}
                 disabled={up.busy || !up.access} style={inputStyle}>
                 {up.outputs.map((p) => <option key={p.id} value={p.id}>{p.name || p.id}</option>)}
@@ -365,6 +386,13 @@ function FirmwareUpdaterPanel() {
             fontSize: 11, letterSpacing: "0.08em" }}>{error}</div>}
 
           <div style={{ display: "flex", gap: 12, marginTop: 18 }}>
+            <button onClick={run(up.enterDfu)} disabled={up.busy || !up.access}
+              style={{ border: `1px solid ${PH.ruleStrong}`, background: "transparent",
+                color: PH.accent, fontFamily: PH.mono, fontWeight: 700, letterSpacing: "0.16em",
+                padding: "13px 18px", cursor: up.busy ? "wait" : "pointer",
+                opacity: up.busy || !up.access ? 0.45 : 1 }}>
+              ENTER DFU
+            </button>
             <button onClick={run(up.flash)} disabled={up.busy || !up.access || !up.image}
               style={{ border: `1px solid ${PH.accent}`, background: PH.accent,
                 color: PH.bg, fontFamily: PH.mono, fontWeight: 800, letterSpacing: "0.2em",
@@ -378,7 +406,9 @@ function FirmwareUpdaterPanel() {
         <PhPanel title="Updater Notes">
           <div style={{ fontFamily: PH.mono, fontSize: 11, lineHeight: 1.8, color: PH.inkDim }}>
             Use a signed firmware binary produced by <span style={{ color: PH.accent }}>sign_firmware.py</span>.
-            Put the pedal in DFU mode before flashing. Chrome or Edge must grant Web MIDI SysEx access.
+            Use ENTER DFU from app mode, or hold the pedal DFU control before flashing. Chrome or Edge must grant Web MIDI SysEx access.
+            Select the interface output connection as <span style={{ color: PH.accent }}>FROM PEDAL</span> and the
+            interface input connection as <span style={{ color: PH.accent }}>TO PEDAL</span>.
             The transfer uses DIN-safe pacing: 120 ms between block frames and 400 ms after each page-erase trigger.
           </div>
         </PhPanel>

@@ -1,4 +1,4 @@
-// Variant B · Phosphor Lab — green CRT oscilloscope studio, instrument cluster.
+// Green CRT oscilloscope studio, instrument cluster.
 // Dense readouts, lots of mono, single accent (phosphor green).
 
 const PH = {
@@ -86,7 +86,7 @@ function PhHeader({ connected, onToggle }) {
         </div>
         <div style={{ fontFamily: PH.mono, fontSize: 10, color: PH.inkMute, letterSpacing: "0.15em",
           marginLeft: 12, paddingLeft: 20, borderLeft: `1px solid ${PH.rule}` }}>
-          PHOSPHOR LAB<br/>FW 1.4.2 · AVD2-0412
+          WEB EDITOR<br/>FW 1.4.2 · AVD2-0412
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 18 }}>

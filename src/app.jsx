@@ -1,6 +1,6 @@
-// web/src/app.jsx — Phosphor Lab wired to the real firmware protocol.
+// web/src/app.jsx — Art Van Delay 2 UI wired to the real firmware protocol.
 //
-// Live params are READ-ONLY over serial (no `web param set`). They change
+// Live params are READ-ONLY over USB MIDI SysEx (no `web param set`). They change
 // when the user loads a preset or turns a physical knob on the pedal.
 // The 2 Hz poll keeps the Live tab in sync with physical knob movement.
 //
@@ -169,7 +169,7 @@ function PhosphorWired() {
         <div style={{ padding: 20 }}>
           {tab === "live" && (
             <PhLive live={live}
-              // Live knob turns are UI-local only — firmware exposes no `web param set`.
+              // Live knob turns are UI-local only; firmware exposes no `web param set`.
               // The 2 Hz poll overwrites these on the next tick, so this is essentially
               // a no-op when connected (as expected). When disconnected, lets you demo.
               setLive={setLive} />
@@ -215,7 +215,7 @@ function WiredHeader({ connected, status, onToggle, fw, serial, error }) {
         </div>
         <div style={{ fontFamily: PH.mono, fontSize: 10, color: PH.inkMute, letterSpacing: "0.15em",
           marginLeft: 12, paddingLeft: 20, borderLeft: `1px solid ${PH.rule}` }}>
-          PHOSPHOR LAB<br/>FW {fw} · {serial}
+          WEB EDITOR<br/>FW {fw} · {serial}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
