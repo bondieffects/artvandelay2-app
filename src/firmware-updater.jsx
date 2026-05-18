@@ -317,7 +317,7 @@ function useFirmwareUpdater() {
   };
 }
 
-function FirmwareUpdaterPanel() {
+function FirmwareUpdaterPanel({ deviceFirmware }) {
   const up = useFirmwareUpdater();
   const [error, setError] = React.useState(null);
   const [confirmFlash, setConfirmFlash] = React.useState(false);
@@ -333,9 +333,26 @@ function FirmwareUpdaterPanel() {
     color: PH.accent, fontFamily: PH.mono, fontSize: 12, padding: "10px",
   };
 
+  const isOutdated = deviceFirmware && fwVersionCompare(deviceFirmware, LATEST_FW_VERSION) < 0;
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 18 }}>
       <PhPanel title="Firmware Image">
+        <div style={{ marginBottom: 16, display: "grid", gap: 8, fontFamily: PH.mono, fontSize: 11 }}>
+          <PhReadout label="Device"
+            value={deviceFirmware ? fwVersionString(deviceFirmware) : "—"}
+            tone={deviceFirmware ? (isOutdated ? PH.warn : PH.accent) : PH.inkMute} />
+          <PhReadout label="Latest" value={fwVersionString(LATEST_FW_VERSION)} />
+          {deviceFirmware && (
+            <div style={{ marginTop: 4, padding: "6px 10px",
+              border: `1px solid ${isOutdated ? PH.warn : PH.accent}`,
+              color: isOutdated ? PH.warn : PH.accent,
+              background: isOutdated ? "rgba(255,180,0,0.06)" : "rgba(255,26,136,0.06)",
+              fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.18em" }}>
+              {isOutdated ? "▲ UPDATE AVAILABLE" : "✓ UP TO DATE"}
+            </div>
+          )}
+        </div>
         <input type="file" accept=".bin,application/octet-stream"
           disabled={up.busy}
           onChange={(e) => e.target.files?.[0] && run(up.loadFile)(e.target.files[0])}

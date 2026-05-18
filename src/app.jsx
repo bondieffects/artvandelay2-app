@@ -174,7 +174,8 @@ function PhosphorWired() {
   }, [selected]);
 
   const fw = info.firmware || MOCK_DEVICE.firmware;
-  const fwString = `${fw.major}.${fw.minor}.${fw.patch}`;
+  const fwString = fwVersionString(fw);
+  const firmwareOutdated = connected && fwVersionCompare(fw, LATEST_FW_VERSION) < 0;
   const serialString = connected
     ? (info.board ? `${info.board} · rev ${info.hardware_revision ?? 0}` : "unknown")
     : MOCK_DEVICE.serial;
@@ -186,7 +187,8 @@ function PhosphorWired() {
         backgroundImage: "repeating-linear-gradient(0deg, rgba(255,26,136,0.025), rgba(255,26,136,0.025) 1px, transparent 1px, transparent 3px)" }} />
       <div style={{ position: "relative", zIndex: 2 }}>
         <WiredHeader connected={connected} status={status} onToggle={onToggle}
-          fw={fwString} serial={serialString} error={error} />
+          fw={fwString} serial={serialString} error={error}
+          firmwareOutdated={firmwareOutdated} onFirmwareUpdate={() => setTab("firmware")} />
         <PhTab tab={tab} setTab={setTab} />
         <div style={{ padding: 20 }}>
           {tab === "live" && (
@@ -205,7 +207,7 @@ function PhosphorWired() {
             <WiredConfig config={config} setConfig={setConfig} onCommit={commitConfig}
               connected={connected} />
           )}
-          {tab === "firmware" && <FirmwareUpdaterPanel />}
+          {tab === "firmware" && <FirmwareUpdaterPanel deviceFirmware={connected ? fw : null} />}
           {tab === "console" && <PhConsole log={log.length ? log : MOCK_LOG} />}
         </div>
       </div>
@@ -214,7 +216,7 @@ function PhosphorWired() {
 }
 
 // Header variant that shows real status and error text.
-function WiredHeader({ connected, status, onToggle, fw, serial, error }) {
+function WiredHeader({ connected, status, onToggle, fw, serial, error, firmwareOutdated, onFirmwareUpdate }) {
   const label = status === "connecting" ? "LINKING…"
               : status === "error"      ? "ERROR"
               : connected               ? "ESTABLISHED"
@@ -243,6 +245,15 @@ function WiredHeader({ connected, status, onToggle, fw, serial, error }) {
       <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
         {error && <div style={{ fontFamily: PH.mono, fontSize: 11, color: PH.danger,
           letterSpacing: "0.1em", maxWidth: 280, textAlign: "right" }}>⚠ {error}</div>}
+        {firmwareOutdated && (
+          <button onClick={onFirmwareUpdate}
+            style={{ border: `1px solid ${PH.warn}`, background: "transparent",
+              color: PH.warn, fontFamily: PH.mono, fontSize: 10, fontWeight: 700,
+              letterSpacing: "0.2em", padding: "7px 12px", borderRadius: 2, cursor: "pointer",
+              boxShadow: `0 0 8px rgba(255,180,0,0.3)` }}>
+            ▲ FW UPDATE AVAILABLE
+          </button>
+        )}
         <div style={{ fontFamily: PH.mono, fontSize: 11, color: PH.inkDim, letterSpacing: "0.15em" }}>
           LINK: <span style={{ color }}>{label}</span>
         </div>

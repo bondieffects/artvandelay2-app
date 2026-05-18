@@ -15,6 +15,18 @@ const PARAM_CATALOG = [
 
 const WAVEFORM_LABELS = PARAM_CATALOG.find((p) => p.key === "lfo_waveform").options;
 
+const LATEST_FW_VERSION = { major: 1, minor: 0, patch: 0 };
+
+function fwVersionCompare(a, b) {
+  if (a.major !== b.major) return a.major - b.major;
+  if (a.minor !== b.minor) return a.minor - b.minor;
+  return (a.patch ?? 0) - (b.patch ?? 0);
+}
+
+function fwVersionString(v) {
+  return `${v.major}.${v.minor}.${v.patch ?? 0}`;
+}
+
 const MOCK_DEVICE = {
   device: "ArtVanDelay2",
   firmware: { major: 1, minor: 4, patch: 2, tweak: 0 },
@@ -300,4 +312,5 @@ Object.assign(window, {
   PARAM_CATALOG, WAVEFORM_LABELS, MOCK_DEVICE, MOCK_LIVE, MOCK_PRESETS,
   MOCK_CONFIG, MOCK_LOG, lfoRateParamToHz, lfoDepthParamToCents, sampleWave,
   useAnimationTime, useLocalState, LfoScope, Knob, useTab,
+  LATEST_FW_VERSION, fwVersionCompare, fwVersionString,
 });
