@@ -165,12 +165,12 @@ function LfoScope({ waveformId, rate, depth, width, height, skin = "phosphor" })
     let raf, start = performance.now();
     const skins = {
       phosphor: {
-        bg: (g) => { g.fillStyle = "#04110a"; g.fillRect(0,0,width,height); },
-        grid: "rgba(100,240,140,0.14)",
-        zero: "rgba(100,240,140,0.3)",
-        trace: "#7cff9e",
-        glow: "rgba(124,255,158,0.55)",
-        dot: "#d6ffd6",
+        bg: (g) => { g.fillStyle = "#110a11"; g.fillRect(0,0,width,height); },
+        grid: "rgba(240,100,240,0.14)",
+        zero: "rgba(240,100,240,0.3)",
+        trace: "#ff55ff",
+        glow: "rgba(255,85,255,0.55)",
+        dot: "#ffd6ff",
       },
       cream: {
         bg: (g) => {
