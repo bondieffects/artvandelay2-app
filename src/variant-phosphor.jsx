@@ -3,17 +3,17 @@
 
 const PH = {
   bg: "#0d0a0b",
-  bgAlt: "#130e11",
-  panel: "#160f13",
-  panelHi: "#1c1318",
-  ink: "#f0c8e4",
-  inkDim: "#b07890",
-  inkMute: "#6a4858",
-  rule: "rgba(255,80,180,0.1)",
-  ruleStrong: "rgba(255,80,180,0.22)",
-  accent: "#ff44cc",
-  accentDim: "#c03580",
-  accentMute: "rgba(255,68,204,0.1)",
+  bgAlt: "#130e10",
+  panel: "#160f12",
+  panelHi: "#1c1316",
+  ink: "#f5c8d8",
+  inkDim: "#b07880",
+  inkMute: "#6a4850",
+  rule: "rgba(255,26,136,0.1)",
+  ruleStrong: "rgba(255,26,136,0.22)",
+  accent: "#ff1a88",
+  accentDim: "#c01060",
+  accentMute: "rgba(255,26,136,0.1)",
   warn: "#ffc46a",
   danger: "#ff6a7a",
   mono: '"JetBrains Mono", ui-monospace, Consolas, monospace',
@@ -64,7 +64,7 @@ function PhReadout({ label, value, unit, tone }) {
       <div style={{ fontFamily: PH.mono, fontSize: 9, letterSpacing: "0.22em",
         color: PH.inkMute, textTransform: "uppercase" }}>{label}</div>
       <div style={{ fontFamily: PH.mono, fontSize: 18, color: tone || PH.accent, marginTop: 4,
-        textShadow: `0 0 10px ${tone || "rgba(255,68,204,0.5)"}` }}>
+        textShadow: `0 0 10px ${tone || "rgba(255,26,136,0.5)"}` }}>
         {value}{unit && <span style={{ fontSize: 11, color: PH.inkDim, marginLeft: 3 }}>{unit}</span>}
       </div>
     </div>
@@ -85,12 +85,12 @@ function PhPedal({ preset, onChange }) {
   const set = (k,v) => onChange && onChange({ ...preset, [k]: Math.round(v) });
   return (
     <div style={{ width: 380, border: `1px solid ${PH.ruleStrong}`, borderRadius: 6, padding: 24,
-      background: "repeating-linear-gradient(90deg, transparent 0, transparent 19px, rgba(255,68,204,0.03) 19px, rgba(255,68,204,0.03) 20px), repeating-linear-gradient(0deg, transparent 0, transparent 19px, rgba(255,68,204,0.03) 19px, rgba(255,68,204,0.03) 20px), #140c14",
+      background: "repeating-linear-gradient(90deg, transparent 0, transparent 19px, rgba(255,26,136,0.03) 19px, rgba(255,26,136,0.03) 20px), repeating-linear-gradient(0deg, transparent 0, transparent 19px, rgba(255,26,136,0.03) 19px, rgba(255,26,136,0.03) 20px), #140c14",
       fontFamily: PH.mono }}>
       <div style={{ textAlign: "center", marginBottom: 22 }}>
         <div style={{ fontSize: 9, letterSpacing: "0.4em", color: PH.inkMute }}>BONDI EFFECTS — SCHEMATIC</div>
         <div style={{ fontFamily: PH.serif, fontSize: 28, color: PH.accent, marginTop: 6,
-          textShadow: "0 0 14px rgba(255,68,204,0.4)" }}>Art Van Delay 2</div>
+          textShadow: "0 0 14px rgba(255,26,136,0.4)" }}>Art Van Delay 2</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 18 }}>
         {knobs.slice(0,3).map(k => <PhKnob key={k.key} value={preset[k.key]} max={k.max} label={k.label}
@@ -110,8 +110,8 @@ function PhPedal({ preset, onChange }) {
         display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontSize: 9, letterSpacing: "0.28em", color: PH.inkMute }}>▸ IN</div>
         <div style={{ width: 44, height: 44, borderRadius: 22, border: `2px solid ${PH.accent}`,
-          background: "radial-gradient(circle at 35% 30%, rgba(255,68,204,0.3), transparent 60%)",
-          boxShadow: "0 0 18px rgba(255,68,204,0.25), inset 0 0 12px rgba(255,68,204,0.3)" }} />
+          background: "radial-gradient(circle at 35% 30%, rgba(255,26,136,0.3), transparent 60%)",
+          boxShadow: "0 0 18px rgba(255,26,136,0.25), inset 0 0 12px rgba(255,26,136,0.3)" }} />
         <div style={{ fontSize: 9, letterSpacing: "0.28em", color: PH.inkMute }}>OUT ▸</div>
       </div>
     </div>
@@ -128,7 +128,7 @@ function PhKnob({ value, max, label, onChange }) {
       <div onWheel={onWheel}
         style={{ width: 58, height: 58, borderRadius: 29, position: "relative",
           background: "#0d0a0d", border: `1.5px solid ${PH.accentDim}`,
-          boxShadow: `0 0 12px rgba(255,68,204,0.15), inset 0 0 12px rgba(255,68,204,0.08)`,
+          boxShadow: `0 0 12px rgba(255,26,136,0.15), inset 0 0 12px rgba(255,26,136,0.08)`,
           cursor: "ns-resize" }}>
         <div style={{ position: "absolute", top: 4, left: "50%", width: 2, height: 14,
           marginLeft: -1, background: PH.accent, boxShadow: `0 0 8px ${PH.accent}`,

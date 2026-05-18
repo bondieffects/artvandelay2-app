@@ -183,7 +183,7 @@ function PhosphorWired() {
     <div style={{ width: 1440, minHeight: 1080, background: PH.bg, color: PH.ink,
       fontFamily: PH.sans, position: "relative" }}>
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1,
-        backgroundImage: "repeating-linear-gradient(0deg, rgba(255,68,204,0.025), rgba(255,68,204,0.025) 1px, transparent 1px, transparent 3px)" }} />
+        backgroundImage: "repeating-linear-gradient(0deg, rgba(255,26,136,0.025), rgba(255,26,136,0.025) 1px, transparent 1px, transparent 3px)" }} />
       <div style={{ position: "relative", zIndex: 2 }}>
         <WiredHeader connected={connected} status={status} onToggle={onToggle}
           fw={fwString} serial={serialString} error={error} />
@@ -233,7 +233,7 @@ function WiredHeader({ connected, status, onToggle, fw, serial, error }) {
           <div style={{ fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.3em",
             color: PH.inkMute, textTransform: "uppercase" }}>Bondi Effects</div>
           <div style={{ fontFamily: PH.serif, fontSize: 26, color: PH.accent, lineHeight: 1, marginTop: 4,
-            textShadow: "0 0 18px rgba(255,68,204,0.35)" }}>Art Van Delay 2</div>
+            textShadow: "0 0 18px rgba(255,26,136,0.35)" }}>Art Van Delay 2</div>
         </div>
         <div style={{ fontFamily: PH.mono, fontSize: 10, color: PH.inkMute, letterSpacing: "0.15em",
           marginLeft: 12, paddingLeft: 20, borderLeft: `1px solid ${PH.rule}` }}>
