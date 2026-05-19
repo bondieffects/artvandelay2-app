@@ -316,6 +316,10 @@ function WiredPresets({ presets, selected, setSelected, draft, setDraft, activeS
         <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 28, alignItems: "start" }}>
           <PhPedal preset={draft} onChange={setDraft} />
           <div>
+            <PhPanel title="LFO · Preview" rightMeta={`${WAVEFORM_LABELS[draft.lfo_waveform]} · ${lfoRateParamToHz(draft.lfo_rate).toFixed(2)} Hz`} style={{ marginBottom: 14 }}>
+              <LfoScope waveformId={draft.lfo_waveform} rate={draft.lfo_rate} depth={draft.lfo_depth}
+                width={660} height={150} skin="phosphor" />
+            </PhPanel>
             <div style={{ fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.24em",
               color: PH.inkMute, marginBottom: 10 }}>FIELD VALUES</div>
             <div style={{ fontFamily: PH.mono, fontSize: 12, color: PH.ink }}>

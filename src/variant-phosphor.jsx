@@ -186,7 +186,7 @@ function PhLive({ live, setLive }) {
         <PhPanel title="Bus Status">
           <div style={{ fontFamily: PH.mono, fontSize: 11, lineHeight: 2, color: PH.inkDim }}>
             <div><span style={{ color: PH.accent }}>▸</span> poll rate ……… <span style={{ color: PH.ink }}>2 Hz</span></div>
-            <div><span style={{ color: PH.accent }}>▸</span> baud …………… <span style={{ color: PH.ink }}>115200</span></div>
+            <div><span style={{ color: PH.accent }}>▸</span> transport …… <span style={{ color: PH.ink }}>USB MIDI</span></div>
             <div><span style={{ color: PH.accent }}>▸</span> tx latency …… <span style={{ color: PH.ink }}>14 ms</span></div>
             <div><span style={{ color: PH.accent }}>▸</span> dropped ……… <span style={{ color: PH.ink }}>0</span></div>
             <div><span style={{ color: PH.accent }}>▸</span> preset dirty … <span style={{ color: live.preset_dirty ? PH.warn : PH.ink }}>
@@ -198,8 +198,12 @@ function PhLive({ live, setLive }) {
             {[["delay_time_ms","DLY",1200],["lfo_rate","RATE",255],["lfo_depth","DEPTH",255],
               ["feedback","FB",255],["effect_level","MIX",255],["tilt","TILT",255]].map(([k,l,mx])=>(
               <PhKnob key={k} value={live[k]} max={mx} label={l}
-                onChange={(v)=>setLive({...live, [k]: Math.round(v)})} />
+                onChange={(v)=>setLive(L => ({...L, [k]: Math.round(v)}))} />
             ))}
+          </div>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${PH.rule}` }}>
+            <PhPedalSelect label="WAVE" options={WAVEFORM_LABELS}
+              value={live.lfo_waveform} onChange={(v) => setLive(L => ({ ...L, lfo_waveform: v }))} />
           </div>
         </PhPanel>
       </div>
