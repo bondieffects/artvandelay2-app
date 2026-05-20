@@ -1,7 +1,7 @@
 // Shared: mock device data (matches firmware JSON shape), LFO math, hooks.
 
 const PARAM_CATALOG = [
-  { id: 0, key: "delay_time_ms", label: "Delay Time",    unit: "ms",   min: 20,   max: 1200, kind: "time" },
+  { id: 0, key: "delay_time_ms", label: "Delay Time",    unit: "ms",   min: 20,   max: 1000, kind: "time" },
   { id: 1, key: "lfo_depth",     label: "LFO Depth",     unit: "",     min: 0,    max: 255,  kind: "8bit" },
   { id: 2, key: "lfo_rate",      label: "LFO Rate",      unit: "",     min: 0,    max: 255,  kind: "8bit" },
   { id: 3, key: "effect_level",  label: "Effect Level",  unit: "",     min: 0,    max: 255,  kind: "8bit" },
@@ -84,6 +84,7 @@ const MOCK_CONFIG = {
   expression_auto_assign: false,
   expression_calibration_min: 12,
   expression_calibration_max: 3980,
+  effect_level_mode: "effect_level",
 };
 
 const MOCK_LOG = [

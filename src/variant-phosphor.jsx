@@ -75,10 +75,10 @@ function PhReadout({ label, value, unit, tone }) {
 function PhPedal({ preset, onChange }) {
   // Wireframe / schematic-style pedal rendering
   const knobs = [
-    { key: "delay_time_ms", label: "DELAY", max: 1200 },
+    { key: "delay_time_ms", label: "DELAY", max: 1000 },
     { key: "lfo_depth", label: "DEPTH", max: 255 },
     { key: "lfo_rate", label: "RATE", max: 255 },
-    { key: "effect_level", label: "MIX", max: 255 },
+    { key: "effect_level", label: "EFFECT LEVEL", max: 255 },
     { key: "feedback", label: "FEEDBACK", max: 255 },
     { key: "tilt", label: "TILT", max: 255 },
   ];
@@ -219,8 +219,8 @@ function PhLive({ live, setLive }) {
         </PhPanel>
         <PhPanel title="Quick Trim">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-            {[["delay_time_ms","DLY",1200],["lfo_rate","RATE",255],["lfo_depth","DEPTH",255],
-              ["feedback","FB",255],["effect_level","MIX",255],["tilt","TILT",255]].map(([k,l,mx])=>(
+            {[["delay_time_ms","DLY",1000],["lfo_rate","RATE",255],["lfo_depth","DEPTH",255],
+              ["effect_level","EFFECT LEVEL",255],["feedback","FEEDBACK",255],["tilt","TILT",255]].map(([k,l,mx])=>(
               <PhKnob key={k} value={live[k]} max={mx} label={l}
                 onChange={(v)=>setLive(L => ({...L, [k]: Math.round(v)}))} />
             ))}

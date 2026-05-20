@@ -154,6 +154,7 @@ function PhosphorWired() {
       ["expression_auto_assign",     String(pendingConfig.expression_auto_assign)],
       ["expression_calibration_min", String(pendingConfig.expression_calibration_min)],
       ["expression_calibration_max", String(pendingConfig.expression_calibration_max)],
+      ["effect_level_mode",          String(pendingConfig.effect_level_mode)],
     ];
     const pairs = allPairs.filter(([k]) => String(pendingConfig[k]) !== String(deviceConfigRef.current[k]));
     if (pairs.length === 0) return;
@@ -416,11 +417,17 @@ function WiredConfig({ config, setConfig, onCommit, connected }) {
         {fld("calibration_max",
           <input type="number" min={0} max={4095} value={config.expression_calibration_max} style={input}
             onChange={(e) => setConfig({ ...config, expression_calibration_max: +e.target.value })}/>)}
+        {fld("effect_level_knob",
+          <select value={config.effect_level_mode || "effect_level"} style={input}
+            onChange={(e) => setConfig({ ...config, effect_level_mode: e.target.value })}>
+            <option value="effect_level">EFFECT LEVEL</option><option value="mix">MIX</option>
+          </select>)}
       </div>
       <div style={{ marginTop: 28, padding: 14, border: `1px dashed ${PH.rule}`,
         fontFamily: PH.mono, fontSize: 11, color: PH.inkDim, letterSpacing: "0.08em", lineHeight: 1.8 }}>
         <span style={{ color: PH.accent }}>▸</span> calibration range constrained to 0–4095 (12-bit ADC).<br/>
-        <span style={{ color: PH.accent }}>▸</span> setting auto_assign=true will bind expression to the last-tweaked parameter.
+        <span style={{ color: PH.accent }}>▸</span> setting auto_assign=true will bind expression to the last-tweaked parameter.<br/>
+        <span style={{ color: PH.accent }}>▸</span> effect_level_knob=MIX turns the EFFECT LEVEL control into a wet/dry mix and persists it in pedal config.
       </div>
       <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
         <button disabled={!connected} onClick={() => onCommit(config)}
