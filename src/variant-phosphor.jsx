@@ -121,15 +121,39 @@ function PhPedal({ preset, onChange }) {
 function PhKnob({ value, max, label, onChange }) {
   const frac = value / max;
   const angle = -135 + frac * 270;
-  const onWheel = (e) => { e.preventDefault();
-    onChange(Math.max(0, Math.min(max, value - Math.sign(e.deltaY) * (max / 80)))); };
+  const dragRef = React.useRef(null);
+
+  const onWheel = (e) => {
+    if (!onChange) return;
+    e.preventDefault();
+    onChange(Math.max(0, Math.min(max, value - Math.sign(e.deltaY) * (max / 80))));
+  };
+
+  const onMouseDown = (e) => {
+    if (!onChange) return;
+    e.preventDefault();
+    dragRef.current = { startY: e.clientY, startVal: value };
+    const onMove = (ev) => {
+      if (!dragRef.current) return;
+      const delta = dragRef.current.startY - ev.clientY;
+      onChange(Math.max(0, Math.min(max, dragRef.current.startVal + delta * (max / 200))));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <div onWheel={onWheel}
+      <div onWheel={onWheel} onMouseDown={onMouseDown}
         style={{ width: 58, height: 58, borderRadius: 29, position: "relative",
           background: "#0d0a0d", border: `1.5px solid ${PH.accentDim}`,
           boxShadow: `0 0 12px rgba(255,26,136,0.15), inset 0 0 12px rgba(255,26,136,0.08)`,
-          cursor: "ns-resize" }}>
+          cursor: onChange ? "ns-resize" : "default", userSelect: "none" }}>
         <div style={{ position: "absolute", top: 4, left: "50%", width: 2, height: 14,
           marginLeft: -1, background: PH.accent, boxShadow: `0 0 8px ${PH.accent}`,
           transform: `rotate(${angle}deg)`, transformOrigin: "center 25px" }} />
