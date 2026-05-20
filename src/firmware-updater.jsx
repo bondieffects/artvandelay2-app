@@ -292,6 +292,8 @@ function useFirmwareUpdater() {
         let delay = FW_PROTO.MIN_BLOCK_INTERVAL_MS;
         if ((targetAddr - FW_PROTO.APP_BASE) % FW_PROTO.PAGE_SIZE === 0) {
           delay = Math.max(delay, FW_PROTO.PAGE_ERASE_INTERVAL_MS);
+          const pageNum = (targetAddr - FW_PROTO.APP_BASE) / FW_PROTO.PAGE_SIZE;
+          addLog("INFO", `page ${pageNum} erase @ 0x${targetAddr.toString(16)} (block ${blockNo}/${image.totalBlocks})`);
         }
         await sleep(delay);
       }
@@ -448,8 +450,8 @@ function FirmwareUpdaterPanel({ deviceFirmware }) {
           <div style={{ fontFamily: PH.mono, fontSize: 11, lineHeight: 1.8, color: PH.inkDim }}>
             Use a signed firmware binary produced by <span style={{ color: PH.accent }}>sign_firmware.py</span>.
             Use ENTER DFU from app mode, or hold the pedal DFU control before flashing. Chrome or Edge must grant Web MIDI SysEx access.
-            Select the interface output connection as <span style={{ color: PH.accent }}>FROM PEDAL</span> and the
-            interface input connection as <span style={{ color: PH.accent }}>TO PEDAL</span>.
+            Select the browser's MIDI input (receiving from the pedal) as <span style={{ color: PH.accent }}>FROM PEDAL</span> and the
+            browser's MIDI output (sending to the pedal) as <span style={{ color: PH.accent }}>TO PEDAL</span>.
             The transfer uses DIN-safe pacing: 120 ms between block frames and 400 ms after each page-erase trigger.
           </div>
         </PhPanel>

@@ -15,6 +15,7 @@ const PARAM_CATALOG = [
 
 const WAVEFORM_LABELS = PARAM_CATALOG.find((p) => p.key === "lfo_waveform").options;
 
+// Bump this manually when a new firmware is released.
 const LATEST_FW_VERSION = { major: 1, minor: 0, patch: 0 };
 
 function fwVersionCompare(a, b) {
@@ -133,28 +134,6 @@ const sampleWave = (id, phase) => {
     default: return Math.sin(2 * Math.PI * p);
   }
 };
-
-// ── useAnimationFrame — raf-based timer returning seconds since mount ──
-function useAnimationTime() {
-  const [t, setT] = React.useState(0);
-  React.useEffect(() => {
-    let raf, start = performance.now();
-    const loop = (now) => { setT((now - start) / 1000); raf = requestAnimationFrame(loop); };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-  return t;
-}
-
-// ── useLocalState — localStorage-backed state ──
-function useLocalState(key, initial) {
-  const [v, setV] = React.useState(() => {
-    try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : initial; }
-    catch { return initial; }
-  });
-  React.useEffect(() => { try { localStorage.setItem(key, JSON.stringify(v)); } catch {} }, [key, v]);
-  return [v, setV];
-}
 
 // ── LfoScope — canvas oscilloscope with configurable skin ──
 function LfoScope({ waveformId, rate, depth, width, height, skin = "phosphor" }) {
@@ -311,6 +290,6 @@ function useTab(initial = "live") { return React.useState(initial); }
 Object.assign(window, {
   PARAM_CATALOG, WAVEFORM_LABELS, MOCK_DEVICE, MOCK_LIVE, MOCK_PRESETS,
   MOCK_CONFIG, MOCK_LOG, lfoRateParamToHz, lfoDepthParamToCents, sampleWave,
-  useAnimationTime, useLocalState, LfoScope, Knob, useTab,
+  LfoScope, Knob, useTab,
   LATEST_FW_VERSION, fwVersionCompare, fwVersionString,
 });

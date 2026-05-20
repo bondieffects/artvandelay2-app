@@ -121,15 +121,39 @@ function PhPedal({ preset, onChange }) {
 function PhKnob({ value, max, label, onChange }) {
   const frac = value / max;
   const angle = -135 + frac * 270;
-  const onWheel = (e) => { e.preventDefault();
-    onChange(Math.max(0, Math.min(max, value - Math.sign(e.deltaY) * (max / 80)))); };
+  const dragRef = React.useRef(null);
+
+  const onWheel = (e) => {
+    if (!onChange) return;
+    e.preventDefault();
+    onChange(Math.max(0, Math.min(max, value - Math.sign(e.deltaY) * (max / 80))));
+  };
+
+  const onMouseDown = (e) => {
+    if (!onChange) return;
+    e.preventDefault();
+    dragRef.current = { startY: e.clientY, startVal: value };
+    const onMove = (ev) => {
+      if (!dragRef.current) return;
+      const delta = dragRef.current.startY - ev.clientY;
+      onChange(Math.max(0, Math.min(max, dragRef.current.startVal + delta * (max / 200))));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <div onWheel={onWheel}
+      <div onWheel={onWheel} onMouseDown={onMouseDown}
         style={{ width: 58, height: 58, borderRadius: 29, position: "relative",
           background: "#0d0a0d", border: `1.5px solid ${PH.accentDim}`,
           boxShadow: `0 0 12px rgba(255,26,136,0.15), inset 0 0 12px rgba(255,26,136,0.08)`,
-          cursor: "ns-resize" }}>
+          cursor: onChange ? "ns-resize" : "default", userSelect: "none" }}>
         <div style={{ position: "absolute", top: 4, left: "50%", width: 2, height: 14,
           marginLeft: -1, background: PH.accent, boxShadow: `0 0 8px ${PH.accent}`,
           transform: `rotate(${angle}deg)`, transformOrigin: "center 25px" }} />
@@ -186,7 +210,7 @@ function PhLive({ live, setLive }) {
         <PhPanel title="Bus Status">
           <div style={{ fontFamily: PH.mono, fontSize: 11, lineHeight: 2, color: PH.inkDim }}>
             <div><span style={{ color: PH.accent }}>▸</span> poll rate ……… <span style={{ color: PH.ink }}>2 Hz</span></div>
-            <div><span style={{ color: PH.accent }}>▸</span> baud …………… <span style={{ color: PH.ink }}>115200</span></div>
+            <div><span style={{ color: PH.accent }}>▸</span> transport …… <span style={{ color: PH.ink }}>USB MIDI</span></div>
             <div><span style={{ color: PH.accent }}>▸</span> tx latency …… <span style={{ color: PH.ink }}>14 ms</span></div>
             <div><span style={{ color: PH.accent }}>▸</span> dropped ……… <span style={{ color: PH.ink }}>0</span></div>
             <div><span style={{ color: PH.accent }}>▸</span> preset dirty … <span style={{ color: live.preset_dirty ? PH.warn : PH.ink }}>
@@ -198,8 +222,12 @@ function PhLive({ live, setLive }) {
             {[["delay_time_ms","DLY",1200],["lfo_rate","RATE",255],["lfo_depth","DEPTH",255],
               ["feedback","FB",255],["effect_level","MIX",255],["tilt","TILT",255]].map(([k,l,mx])=>(
               <PhKnob key={k} value={live[k]} max={mx} label={l}
-                onChange={(v)=>setLive({...live, [k]: Math.round(v)})} />
+                onChange={(v)=>setLive(L => ({...L, [k]: Math.round(v)}))} />
             ))}
+          </div>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${PH.rule}` }}>
+            <PhPedalSelect label="WAVE" options={WAVEFORM_LABELS}
+              value={live.lfo_waveform} onChange={(v) => setLive(L => ({ ...L, lfo_waveform: v }))} />
           </div>
         </PhPanel>
       </div>

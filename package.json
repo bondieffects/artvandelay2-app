@@ -5,7 +5,8 @@
   "description": "Self-contained Art Van Delay 2 Web MIDI editor and firmware updater.",
   "scripts": {
     "build": "node scripts/build.js",
-    "serve": "npx http-server dist -p 4173"
+    "serve": "npx http-server dist -p 4173",
+    "test": "node tests/pure-functions.test.js"
   },
   "dependencies": {
     "@babel/standalone": "7.29.0",

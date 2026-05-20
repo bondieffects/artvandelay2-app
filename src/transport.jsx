@@ -121,7 +121,7 @@ function makeTransport() {
   function sendCommand(command) {
     if (!output) return Promise.reject(new Error("Not connected."));
 
-    commandChain = commandChain.then(async () => {
+    commandChain = commandChain.catch(() => {}).then(async () => {
       const requestId = nextRequestId;
       nextRequestId = (nextRequestId + 1) & 0x7f;
       if (nextRequestId === 0) nextRequestId = 1;

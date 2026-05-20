@@ -32,13 +32,19 @@ function PhosphorWired() {
     try {
       const list = await transport.presetList();
       if (!list) return;
-      // slots[] only carries {slot, valid} — names/fields come from `preset get`.
-      // Merge onto MOCK_PRESETS so the UI has something to show for unloaded slots.
-      const merged = MOCK_PRESETS.map((base) => {
-        const hit = list.slots.find((s) => s.slot === base.slot);
-        return hit ? { ...base, slot: hit.slot, valid: hit.valid } : base;
+      // Build from the firmware's slot list so we show all slots the device reports,
+      // not just the 8 entries in MOCK_PRESETS. Preserve any already-fetched detail.
+      setPresets((current) => {
+        const bySlot = {};
+        for (const p of current) bySlot[p.slot] = p;
+        return list.slots.map(({ slot, valid }) => {
+          const existing = bySlot[slot];
+          const base = { slot, valid, name: `Slot ${String(slot).padStart(2, "0")}`,
+            delay_time_ms: 400, lfo_depth: 80, lfo_rate: 64, effect_level: 160,
+            feedback: 90, tilt: 128, subdivision: 3, lfo_waveform: 0, expression: 0, bypass_state: 1 };
+          return existing ? { ...existing, valid } : base;
+        });
       });
-      setPresets(merged);
       if (typeof list.active === "number") {
         setLive((L) => ({ ...L, active_preset: list.active, preset_dirty: !!list.dirty }));
       }
@@ -50,11 +56,7 @@ function PhosphorWired() {
       const r = await transport.presetGet(slot);
       if (r && r.preset) {
         loadedSlotsRef.current.add(slot);
-        setPresets((P) => {
-          const n = P.slice();
-          n[slot] = { ...n[slot], ...r.preset };
-          return n;
-        });
+        setPresets((P) => P.map((p) => p.slot === slot ? { ...p, ...r.preset } : p));
       }
     } catch (e) { setError(e.message); }
   }, [transport]);
@@ -93,16 +95,24 @@ function PhosphorWired() {
     } catch (e) { setError(e.message); }
   }, [transport, connected, refreshAll]);
 
-  // ── Live polling (2 Hz) — tracks physical knob movement ─
+  // ── Live polling — tracks physical knob movement; pauses when tab is hidden ─
   React.useEffect(() => {
     if (!connected) return;
     let stopped = false;
     let timerId;
+    let failCount = 0;
     const tick = async () => {
       if (stopped) return;
-      try { const v = await transport.paramGet(); if (v && !stopped) setLive((L) => ({ ...L, ...v })); }
-      catch { /* transient */ }
-      if (!stopped) timerId = setTimeout(tick, 500);
+      if (!document.hidden) {
+        try {
+          const v = await transport.paramGet();
+          if (v && !stopped) { setLive((L) => ({ ...L, ...v })); failCount = 0; }
+        } catch {
+          failCount++;
+          if (!stopped && failCount >= 3) setError("Lost contact with pedal — try reconnecting.");
+        }
+      }
+      if (!stopped) timerId = setTimeout(tick, document.hidden ? 2000 : 500);
     };
     timerId = setTimeout(tick, 500);
     return () => { stopped = true; clearTimeout(timerId); };
@@ -110,7 +120,8 @@ function PhosphorWired() {
 
   // ── Lazy-load per-slot detail when user selects a slot ──
   React.useEffect(() => {
-    if (connected && presets[selected]?.valid && !loadedSlotsRef.current.has(selected)) {
+    const slot = presets.find((p) => p.slot === selected);
+    if (connected && slot?.valid && !loadedSlotsRef.current.has(selected)) {
       refreshSelected(selected);
     }
   }, [connected, selected, presets, refreshSelected]);
@@ -159,18 +170,15 @@ function PhosphorWired() {
   }, [transport]);
 
   // Local draft for presets tab — edits here are UI-only until LOAD/SAVE.
-  const draft = presets[selected]?.valid && presets[selected]?.delay_time_ms !== undefined
-    ? presets[selected]
+  const presetBySlot = presets.find((p) => p.slot === selected);
+  const draft = presetBySlot?.valid && presetBySlot?.delay_time_ms !== undefined
+    ? presetBySlot
     : { slot: selected, valid: false, name: `Slot ${selected}`,
         delay_time_ms: 400, lfo_depth: 80, lfo_rate: 64,
         effect_level: 160, feedback: 90, tilt: 128,
         subdivision: 3, lfo_waveform: 0, expression: 0, bypass_state: 1 };
   const setDraft = React.useCallback((d) => {
-    setPresets((P) => {
-      const n = P.slice();
-      n[selected] = { ...d, valid: true };
-      return n;
-    });
+    setPresets((P) => P.map((p) => p.slot === selected ? { ...d, valid: true } : p));
   }, [selected]);
 
   const fw = info.firmware || MOCK_DEVICE.firmware;
@@ -316,6 +324,10 @@ function WiredPresets({ presets, selected, setSelected, draft, setDraft, activeS
         <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 28, alignItems: "start" }}>
           <PhPedal preset={draft} onChange={setDraft} />
           <div>
+            <PhPanel title="LFO · Preview" rightMeta={`${WAVEFORM_LABELS[draft.lfo_waveform]} · ${lfoRateParamToHz(draft.lfo_rate).toFixed(2)} Hz`} style={{ marginBottom: 14 }}>
+              <LfoScope waveformId={draft.lfo_waveform} rate={draft.lfo_rate} depth={draft.lfo_depth}
+                width={660} height={150} skin="phosphor" />
+            </PhPanel>
             <div style={{ fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.24em",
               color: PH.inkMute, marginBottom: 10 }}>FIELD VALUES</div>
             <div style={{ fontFamily: PH.mono, fontSize: 12, color: PH.ink }}>
@@ -338,7 +350,13 @@ function WiredPresets({ presets, selected, setSelected, draft, setDraft, activeS
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 8, marginTop: 20 }}>
+            <div style={{ marginTop: 16, padding: "8px 10px",
+              border: `1px dashed ${PH.warn}`, color: PH.warn,
+              fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.12em", lineHeight: 1.6 }}>
+              ▸ Knob edits above are preview-only — they are not sent to the pedal.<br/>
+              ▸ WRITE TO SLOT commits the pedal's current live state, not these values.
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button style={btn(false)} disabled={disabled}
                 onClick={() => onLoad(selected)}>LOAD TO DEVICE</button>
               <button style={btn(true)} disabled={disabled}
