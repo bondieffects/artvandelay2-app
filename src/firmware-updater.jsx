@@ -1,68 +1,10 @@
 // Web MIDI firmware updater for signed Art Van Delay 2 bootloader images.
 // Input file format matches midi-bootloader/tools/sign_firmware.py:
 // firmware bytes followed by a 32-byte HMAC-SHA256 tag.
-
-const FW_PROTO = {
-  MFR_ID: 0x7d,
-  CMD_PING: 0x00,
-  CMD_BLOCK: 0x01,
-  CMD_COMMIT: 0x02,
-  RESP_PONG: 0x70,
-  RESP_COMMIT_OK: 0x73,
-  RESP_COMMIT_FAIL: 0x74,
-  APP_BASE: 0x08008000,
-  FLASH_END: 0x08040000,
-  BLOCK_SIZE: 256,
-  PAGE_SIZE: 2048,
-  APP_SPACE: 256 * 1024 - (0x08008000 - 0x08000000),
-  MIN_BLOCK_INTERVAL_MS: 120,
-  PAGE_ERASE_INTERVAL_MS: 400,
-};
+// FW_PROTO, fwEncode8to7, fwCrc16, fwU16be, fwU32be, fwU32le, fwParseImage
+// are defined in src/pure.js (loaded before this script).
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function fwEncode8to7(data) {
-  const out = [];
-  for (let i = 0; i < data.length; i += 7) {
-    const chunk = data.slice(i, i + 7);
-    let msbs = 0;
-    for (let j = 0; j < chunk.length; j++) msbs |= ((chunk[j] >> 7) & 1) << j;
-    out.push(msbs);
-    for (const b of chunk) out.push(b & 0x7f);
-  }
-  return new Uint8Array(out);
-}
-
-function fwCrc16(data) {
-  let crc = 0xffff;
-  for (const b of data) {
-    crc ^= b << 8;
-    for (let i = 0; i < 8; i++) {
-      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
-      crc &= 0xffff;
-    }
-  }
-  return crc;
-}
-
-function fwU16be(out, offset, value) {
-  out[offset] = (value >> 8) & 0xff;
-  out[offset + 1] = value & 0xff;
-}
-
-function fwU32be(out, offset, value) {
-  out[offset] = (value >>> 24) & 0xff;
-  out[offset + 1] = (value >>> 16) & 0xff;
-  out[offset + 2] = (value >>> 8) & 0xff;
-  out[offset + 3] = value & 0xff;
-}
-
-function fwU32le(data, offset) {
-  return ((data[offset] ?? 0xff) |
-          ((data[offset + 1] ?? 0xff) << 8) |
-          ((data[offset + 2] ?? 0xff) << 16) |
-          ((data[offset + 3] ?? 0xff) << 24)) >>> 0;
-}
 
 function fwMakePing() {
   return new Uint8Array([0xf0, FW_PROTO.MFR_ID, FW_PROTO.CMD_PING, 0xf7]);
@@ -71,7 +13,8 @@ function fwMakePing() {
 function fwMakeEnterDfu() {
   const text = "web dfu";
   const frame = new Uint8Array(4 + text.length + 1);
-  frame.set([0xf0, FW_PROTO.MFR_ID, 0x10, 0x01], 0);
+  // Use 0x7f to reduce collision risk with the main transport (which cycles from 0x01).
+  frame.set([0xf0, FW_PROTO.MFR_ID, 0x10, 0x7f], 0);
   for (let i = 0; i < text.length; i++) frame[4 + i] = text.charCodeAt(i) & 0x7f;
   frame[frame.length - 1] = 0xf7;
   return frame;
@@ -107,35 +50,6 @@ function fwMakeCommitFrame(size, tag) {
   return frame;
 }
 
-function fwParseImage(bytes) {
-  if (bytes.length < 33) throw new Error("File is too small; expected firmware plus 32-byte tag.");
-  const firmware = bytes.slice(0, bytes.length - 32);
-  const tag = bytes.slice(bytes.length - 32);
-  if (firmware.length > FW_PROTO.APP_SPACE) {
-    throw new Error(`Firmware is ${firmware.length.toLocaleString()} bytes; maximum is ${FW_PROTO.APP_SPACE.toLocaleString()}.`);
-  }
-  const paddedSize = Math.ceil(firmware.length / FW_PROTO.BLOCK_SIZE) * FW_PROTO.BLOCK_SIZE;
-  const padded = new Uint8Array(paddedSize);
-  padded.fill(0xff);
-  padded.set(firmware);
-  const sp = fwU32le(firmware, 0);
-  const reset = fwU32le(firmware, 4);
-  const vectorOk = firmware.length >= 8 &&
-    (sp & 0xff000000) === 0x20000000 &&
-    FW_PROTO.APP_BASE <= (reset & ~1) &&
-    (reset & ~1) < FW_PROTO.FLASH_END;
-  return {
-    firmware,
-    padded,
-    tag,
-    size: firmware.length,
-    totalBlocks: padded.length / FW_PROTO.BLOCK_SIZE,
-    sp,
-    reset,
-    vectorOk,
-  };
-}
-
 function fwResponseName(bytes) {
   if (!bytes || bytes.length < 2 || bytes[0] !== FW_PROTO.MFR_ID) return "unknown";
   if (bytes[1] === FW_PROTO.RESP_PONG) return "pong";
@@ -158,12 +72,17 @@ function useFirmwareUpdater() {
   const inputRef = React.useRef(null);
   const outputIdRef = React.useRef(outputId);
   const waitersRef = React.useRef([]);
+  const cancelRef = React.useRef(false);
+  const logIdRef = React.useRef(0);
 
   React.useEffect(() => { outputIdRef.current = outputId; }, [outputId]);
 
   const addLog = React.useCallback((type, msg) => {
     const t = new Date().toLocaleTimeString([], { hour12: false });
-    setLog((L) => L.concat([[t, type, msg]]).slice(-200));
+    setLog((L) => {
+      const id = ++logIdRef.current;
+      return L.concat([[id, t, type, msg]]).slice(-200);
+    });
   }, []);
 
   const refreshPorts = React.useCallback((midiAccess) => {
@@ -180,7 +99,7 @@ function useFirmwareUpdater() {
   const requestMidi = React.useCallback(async () => {
     if (!navigator.requestMIDIAccess) throw new Error("Web MIDI is not available in this browser.");
     const midiAccess = await navigator.requestMIDIAccess({ sysex: true });
-    midiAccess.onstatechange = () => refreshPorts(midiAccess);
+    midiAccess.onstatechange = () => { refreshPorts(midiAccess); cancelRef.current = true; };
     setAccess(midiAccess);
     refreshPorts(midiAccess);
     addLog("INFO", "Web MIDI SysEx access granted.");
@@ -205,12 +124,12 @@ function useFirmwareUpdater() {
 
   React.useEffect(() => {
     if (!access) return;
-    for (const input of inputs) input.onmidimessage = null;
     const selected = access.inputs.get(inputId);
-    if (selected) selected.onmidimessage = onMidiMessage;
-    inputRef.current = selected || null;
-    return () => { if (selected) selected.onmidimessage = null; };
-  }, [access, inputs, inputId, onMidiMessage]);
+    if (!selected) { inputRef.current = null; return; }
+    selected.addEventListener('midimessage', onMidiMessage);
+    inputRef.current = selected;
+    return () => { selected.removeEventListener('midimessage', onMidiMessage); inputRef.current = null; };
+  }, [access, inputId, onMidiMessage]);
 
   const waitFor = React.useCallback((match, timeoutMs, label) => new Promise((resolve, reject) => {
     const waiter = {
@@ -252,16 +171,20 @@ function useFirmwareUpdater() {
 
   const enterDfu = React.useCallback(async () => {
     const midiAccess = access ?? await requestMidi();
-    const output = midiAccess.outputs.get(outputId);
+    const output = midiAccess.outputs.get(outputIdRef.current);
     if (!output) throw new Error("Select a MIDI output.");
     setStatus("Requesting DFU mode");
     send(output, fwMakeEnterDfu());
     addLog("TX", "web dfu");
     await sleep(1800);
     await ping();
-  }, [access, addLog, outputId, ping, requestMidi, send]);
+  }, [access, addLog, ping, requestMidi, send]);
 
   const loadFile = React.useCallback(async (file) => {
+    const maxSize = FW_PROTO.APP_SPACE + 32;
+    if (file.size > maxSize) {
+      throw new Error(`File too large (${file.size.toLocaleString()} B); maximum is ${maxSize.toLocaleString()} B.`);
+    }
     const bytes = new Uint8Array(await file.arrayBuffer());
     const parsed = fwParseImage(bytes);
     parsed.name = file.name;
@@ -276,6 +199,7 @@ function useFirmwareUpdater() {
     if (!access) throw new Error("Connect Web MIDI first.");
     const output = access.outputs.get(outputId);
     if (!output) throw new Error("Select a MIDI output.");
+    cancelRef.current = false;
     setBusy(true);
     setProgress(0);
     const start = performance.now();
@@ -283,12 +207,13 @@ function useFirmwareUpdater() {
       await ping();
       setStatus("Flashing blocks");
       for (let blockNo = 0; blockNo < image.totalBlocks; blockNo++) {
+        if (cancelRef.current) throw new Error("Flash cancelled: device disconnected.");
         const offset = blockNo * FW_PROTO.BLOCK_SIZE;
         const targetAddr = FW_PROTO.APP_BASE + offset;
         const actualLen = Math.max(1, Math.min(FW_PROTO.BLOCK_SIZE, image.size - offset));
         const chunk = image.padded.slice(offset, offset + actualLen);
         send(output, fwMakeBlockFrame(blockNo, image.totalBlocks, targetAddr, chunk));
-        setProgress((blockNo + 1) / image.totalBlocks);
+        setProgress(Math.min(0.99, (blockNo + 1) / image.totalBlocks));
         let delay = FW_PROTO.MIN_BLOCK_INTERVAL_MS;
         if ((targetAddr - FW_PROTO.APP_BASE) % FW_PROTO.PAGE_SIZE === 0) {
           delay = Math.max(delay, FW_PROTO.PAGE_ERASE_INTERVAL_MS);
@@ -457,7 +382,7 @@ function FirmwareUpdaterPanel({ deviceFirmware }) {
         </PhPanel>
 
         <PhPanel title="Transfer Log">
-          <PhConsole log={up.log.length ? up.log : [["--:--:--", "INFO", "No firmware transfer yet."]]} />
+          <PhConsole log={up.log.length ? up.log : [[0, "--:--:--", "INFO", "No firmware transfer yet."]]} />
         </PhPanel>
       </div>
     </div>

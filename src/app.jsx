@@ -182,7 +182,7 @@ function PhosphorWired() {
     setPresets((P) => P.map((p) => p.slot === selected ? { ...d, valid: true } : p));
   }, [selected]);
 
-  const fw = info.firmware || MOCK_DEVICE.firmware;
+  const fw = info.firmware?.major !== undefined ? info.firmware : MOCK_DEVICE.firmware;
   const fwString = fwVersionString(fw);
   const firmwareOutdated = connected && fwVersionCompare(fw, LATEST_FW_VERSION) < 0;
   const serialString = connected
@@ -190,7 +190,7 @@ function PhosphorWired() {
     : MOCK_DEVICE.serial;
 
   return (
-    <div style={{ width: 1440, minHeight: 1080, background: PH.bg, color: PH.ink,
+    <div style={{ width: "100%", maxWidth: 1440, minHeight: 1080, background: PH.bg, color: PH.ink,
       fontFamily: PH.sans, position: "relative" }}>
       <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 1,
         backgroundImage: "repeating-linear-gradient(0deg, rgba(255,26,136,0.025), rgba(255,26,136,0.025) 1px, transparent 1px, transparent 3px)" }} />
@@ -201,23 +201,33 @@ function PhosphorWired() {
         <PhTab tab={tab} setTab={setTab} />
         <div style={{ padding: 20 }}>
           {tab === "live" && (
-            <PhLive live={live}
-              // Live knob turns are UI-local only; firmware exposes no `web param set`.
-              // The 2 Hz poll overwrites these on the next tick, so this is essentially
-              // a no-op when connected (as expected). When disconnected, lets you demo.
-              setLive={setLive} />
+            <div role="tabpanel" id={PH_PANEL_ID("live")} aria-labelledby={PH_TAB_ID("live")}>
+              <PhLive live={live} setLive={setLive} connected={connected} />
+            </div>
           )}
           {tab === "presets" && (
-            <WiredPresets presets={presets} selected={selected} setSelected={setSelected}
-              draft={draft} setDraft={setDraft} activeSlot={live.active_preset}
-              connected={connected} onLoad={loadSlot} onSave={saveSlot} />
+            <div role="tabpanel" id={PH_PANEL_ID("presets")} aria-labelledby={PH_TAB_ID("presets")}>
+              <WiredPresets presets={presets} selected={selected} setSelected={setSelected}
+                draft={draft} setDraft={setDraft} activeSlot={live.active_preset}
+                connected={connected} onLoad={loadSlot} onSave={saveSlot} />
+            </div>
           )}
           {tab === "config" && (
-            <WiredConfig config={config} setConfig={setConfig} onCommit={commitConfig}
-              connected={connected} />
+            <div role="tabpanel" id={PH_PANEL_ID("config")} aria-labelledby={PH_TAB_ID("config")}>
+              <WiredConfig config={config} setConfig={setConfig} onCommit={commitConfig}
+                connected={connected} />
+            </div>
           )}
-          {tab === "firmware" && <FirmwareUpdaterPanel deviceFirmware={connected ? fw : null} />}
-          {tab === "console" && <PhConsole log={log.length ? log : MOCK_LOG} />}
+          {tab === "firmware" && (
+            <div role="tabpanel" id={PH_PANEL_ID("firmware")} aria-labelledby={PH_TAB_ID("firmware")}>
+              <FirmwareUpdaterPanel deviceFirmware={connected ? fw : null} />
+            </div>
+          )}
+          {tab === "console" && (
+            <div role="tabpanel" id={PH_PANEL_ID("console")} aria-labelledby={PH_TAB_ID("console")}>
+              <PhConsole log={log.length ? log : MOCK_LOG} />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -443,4 +453,41 @@ function WiredConfig({ config, setConfig, onCommit, connected }) {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<PhosphorWired />);
+function UnsupportedBrowser() {
+  return (
+    <div style={{ width: "100%", minHeight: "100vh", background: PH.bg, color: PH.ink,
+      fontFamily: PH.sans, display: "flex", alignItems: "center", justifyContent: "center",
+      padding: 24 }}>
+      <div role="alert" style={{ maxWidth: 560, padding: 36, background: PH.panel,
+        border: `1px solid ${PH.ruleStrong}`, borderRadius: 4 }}>
+        <div style={{ fontFamily: PH.mono, fontSize: 10, letterSpacing: "0.3em",
+          color: PH.warn, textTransform: "uppercase", marginBottom: 10 }}>
+          ◆ Unsupported browser
+        </div>
+        <div style={{ fontFamily: PH.serif, fontSize: 28, color: PH.accent, lineHeight: 1.1,
+          textShadow: "0 0 18px rgba(255,26,136,0.35)", marginBottom: 18 }}>
+          This editor needs Web MIDI&nbsp;SysEx.
+        </div>
+        <div style={{ fontFamily: PH.sans, fontSize: 14, color: PH.inkDim, lineHeight: 1.6,
+          marginBottom: 18 }}>
+          Your browser does not expose <code style={{ fontFamily: PH.mono, color: PH.ink }}>
+          navigator.requestMIDIAccess</code>, so this page cannot talk to the pedal.
+        </div>
+        <div style={{ fontFamily: PH.mono, fontSize: 12, color: PH.ink, lineHeight: 1.8,
+          padding: "12px 14px", background: PH.bgAlt, border: `1px solid ${PH.rule}`,
+          borderRadius: 2 }}>
+          <div><span style={{ color: PH.accent }}>▸</span> Use <strong>Chrome</strong> or <strong>Edge</strong> on desktop.</div>
+          <div><span style={{ color: PH.accent }}>▸</span> The page must be served over <strong>HTTPS</strong> or <code>localhost</code>.</div>
+          <div><span style={{ color: PH.accent }}>▸</span> Firefox, Safari, and mobile browsers are <strong>not supported</strong>.</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const webMidiSupported = typeof navigator !== "undefined"
+  && typeof navigator.requestMIDIAccess === "function";
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  webMidiSupported ? <PhosphorWired /> : <UnsupportedBrowser />
+);

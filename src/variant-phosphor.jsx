@@ -37,15 +37,51 @@ function PhPanel({ children, style, title, rightMeta }) {
     </div>
   );
 }
+PhPanel = React.memo(PhPanel);
+
+const PH_TAB_ID = (k) => `tab-${k}`;
+const PH_PANEL_ID = (k) => `tabpanel-${k}`;
 
 function PhTab({ tab, setTab }) {
   const tabs = [["live","LIVE"],["presets","PRESETS"],["config","CONFIG"],["firmware","FIRMWARE"],["console","CONSOLE"]];
+  const tablistRef = React.useRef(null);
+
+  const move = (nextKey) => {
+    setTab(nextKey);
+    requestAnimationFrame(() => {
+      const btn = tablistRef.current?.querySelector(`#${PH_TAB_ID(nextKey)}`);
+      if (btn) btn.focus();
+    });
+  };
+
+  const onKeyDown = (e) => {
+    const i = tabs.findIndex(([k]) => k === tab);
+    if (i < 0) return;
+    let next = -1;
+    if (e.key === "ArrowRight") next = (i + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = tabs.length - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    move(tabs[next][0]);
+  };
+
   return (
-    <div style={{ display: "flex", borderBottom: `1px solid ${PH.rule}` }}>
+    <div role="tablist" aria-label="Editor sections" ref={tablistRef}
+      style={{ display: "flex", borderBottom: `1px solid ${PH.rule}` }}>
       {tabs.map(([k,l])=>{
         const active = tab===k;
         return (
-          <button key={k} onClick={()=>setTab(k)}
+          <button key={k}
+            id={PH_TAB_ID(k)}
+            role="tab"
+            aria-selected={active}
+            aria-controls={PH_PANEL_ID(k)}
+            tabIndex={active ? 0 : -1}
+            onClick={()=>setTab(k)}
+            onKeyDown={onKeyDown}
+            className="avd-tab"
             style={{ border: "none", background: "transparent", padding: "14px 22px",
               color: active ? PH.accent : PH.inkDim, fontFamily: PH.mono, fontSize: 12,
               letterSpacing: "0.24em", fontWeight: 600, cursor: "pointer",
@@ -70,19 +106,12 @@ function PhReadout({ label, value, unit, tone }) {
     </div>
   );
 }
+PhReadout = React.memo(PhReadout);
 
 
 function PhPedal({ preset, onChange }) {
-  // Wireframe / schematic-style pedal rendering
-  const knobs = [
-    { key: "delay_time_ms", label: "DELAY", max: 1000 },
-    { key: "lfo_depth", label: "DEPTH", max: 255 },
-    { key: "lfo_rate", label: "RATE", max: 255 },
-    { key: "effect_level", label: "EFFECT LEVEL", max: 255 },
-    { key: "feedback", label: "FEEDBACK", max: 255 },
-    { key: "tilt", label: "TILT", max: 255 },
-  ];
-  const set = (k,v) => onChange && onChange({ ...preset, [k]: Math.round(v) });
+  const knobs = PARAM_CATALOG.filter((p) => p.kind !== "enum");
+  const set = (k, v) => onChange && onChange({ ...preset, [k]: v });
   return (
     <div style={{ width: 380, border: `1px solid ${PH.ruleStrong}`, borderRadius: 6, padding: 24,
       background: "repeating-linear-gradient(90deg, transparent 0, transparent 19px, rgba(255,26,136,0.03) 19px, rgba(255,26,136,0.03) 20px), repeating-linear-gradient(0deg, transparent 0, transparent 19px, rgba(255,26,136,0.03) 19px, rgba(255,26,136,0.03) 20px), #140c14",
@@ -93,12 +122,12 @@ function PhPedal({ preset, onChange }) {
           textShadow: "0 0 14px rgba(255,26,136,0.4)" }}>Art Van Delay 2</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 18 }}>
-        {knobs.slice(0,3).map(k => <PhKnob key={k.key} value={preset[k.key]} max={k.max} label={k.label}
-          onChange={(v)=>set(k.key,v)} />)}
+        {knobs.slice(0,3).map(p => <PhKnob key={p.key} value={preset[p.key]} max={p.max} label={p.shortLabel}
+          onChange={(v) => set(p.key, v)} />)}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 22 }}>
-        {knobs.slice(3,6).map(k => <PhKnob key={k.key} value={preset[k.key]} max={k.max} label={k.label}
-          onChange={(v)=>set(k.key,v)} />)}
+        {knobs.slice(3,6).map(p => <PhKnob key={p.key} value={preset[p.key]} max={p.max} label={p.shortLabel}
+          onChange={(v) => set(p.key, v)} />)}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <PhPedalSelect label="WAVE" options={WAVEFORM_LABELS}
@@ -118,42 +147,87 @@ function PhPedal({ preset, onChange }) {
   );
 }
 
-function PhKnob({ value, max, label, onChange }) {
+function PhKnob({ value, max, label, onChange, step = 1 }) {
+  const knobRef = React.useRef(null);
+  const stateRef = React.useRef(null);
   const frac = value / max;
   const angle = -135 + frac * 270;
   const dragRef = React.useRef(null);
+  const interactive = !!onChange;
+  const clamp = (v) => Math.max(0, Math.min(max, v));
+  const set = (v) => onChange && onChange(Math.round(clamp(v) / step) * step);
+  stateRef.current = { value, max, set };
 
-  const onWheel = (e) => {
-    if (!onChange) return;
+  // React registers onWheel as passive; use a direct listener so preventDefault works.
+  React.useEffect(() => {
+    const el = knobRef.current;
+    if (!el || !interactive) return;
+    const handler = (e) => {
+      e.preventDefault();
+      const { value, max, set } = stateRef.current;
+      set(value - Math.sign(e.deltaY) * (max / 80));
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [interactive]);
+
+  const onPointerDown = (e) => {
+    if (!interactive) return;
     e.preventDefault();
-    onChange(Math.max(0, Math.min(max, value - Math.sign(e.deltaY) * (max / 80))));
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
+    dragRef.current = { startY: e.clientY, startVal: value, pointerId: e.pointerId };
   };
 
-  const onMouseDown = (e) => {
-    if (!onChange) return;
-    e.preventDefault();
-    dragRef.current = { startY: e.clientY, startVal: value };
-    const onMove = (ev) => {
-      if (!dragRef.current) return;
-      const delta = dragRef.current.startY - ev.clientY;
-      onChange(Math.max(0, Math.min(max, dragRef.current.startVal + delta * (max / 200))));
-    };
-    const onUp = () => {
-      dragRef.current = null;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+  const onPointerMove = (e) => {
+    if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
+    const delta = dragRef.current.startY - e.clientY;
+    set(dragRef.current.startVal + delta * (max / 200));
+  };
+
+  const onPointerUp = (e) => {
+    if (!dragRef.current) return;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
+    dragRef.current = null;
+  };
+
+  const onKeyDown = (e) => {
+    if (!interactive) return;
+    const fine = max / 100;
+    const coarse = max / 10;
+    switch (e.key) {
+      case "ArrowUp":
+      case "ArrowRight": e.preventDefault(); set(value + fine); break;
+      case "ArrowDown":
+      case "ArrowLeft":  e.preventDefault(); set(value - fine); break;
+      case "PageUp":     e.preventDefault(); set(value + coarse); break;
+      case "PageDown":   e.preventDefault(); set(value - coarse); break;
+      case "Home":       e.preventDefault(); set(0); break;
+      case "End":        e.preventDefault(); set(max); break;
+    }
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <div onWheel={onWheel} onMouseDown={onMouseDown}
+      <div
+        ref={knobRef}
+        className="avd-knob"
+        role={interactive ? "slider" : undefined}
+        tabIndex={interactive ? 0 : -1}
+        aria-label={interactive ? label : undefined}
+        aria-valuemin={interactive ? 0 : undefined}
+        aria-valuemax={interactive ? max : undefined}
+        aria-valuenow={interactive ? Math.round(value) : undefined}
+        aria-orientation="vertical"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onKeyDown={onKeyDown}
         style={{ width: 58, height: 58, borderRadius: 29, position: "relative",
           background: "#0d0a0d", border: `1.5px solid ${PH.accentDim}`,
           boxShadow: `0 0 12px rgba(255,26,136,0.15), inset 0 0 12px rgba(255,26,136,0.08)`,
-          cursor: onChange ? "ns-resize" : "default", userSelect: "none" }}>
+          cursor: interactive ? "ns-resize" : "default",
+          userSelect: "none", touchAction: "none" }}>
         <div style={{ position: "absolute", top: 4, left: "50%", width: 2, height: 14,
           marginLeft: -1, background: PH.accent, boxShadow: `0 0 8px ${PH.accent}`,
           transform: `rotate(${angle}deg)`, transformOrigin: "center 25px" }} />
@@ -163,12 +237,14 @@ function PhKnob({ value, max, label, onChange }) {
     </div>
   );
 }
+PhKnob = React.memo(PhKnob);
 
 function PhPedalSelect({ label, options, value, onChange }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div style={{ fontSize: 9, letterSpacing: "0.26em", color: PH.inkDim }}>{label}</div>
-      <select value={value} onChange={(e)=>onChange(Number(e.target.value))}
+      <select value={value} onChange={(e) => onChange && onChange(Number(e.target.value))}
+        aria-label={label}
         style={{ background: "#0d0a0d", border: `1px solid ${PH.accentDim}`, color: PH.accent,
           fontFamily: PH.mono, fontSize: 11, padding: "8px 10px", letterSpacing: "0.1em" }}>
         {options.map((o,i)=><option key={i} value={i}>{o}</option>)}
@@ -177,7 +253,7 @@ function PhPedalSelect({ label, options, value, onChange }) {
   );
 }
 
-function PhLive({ live, setLive }) {
+function PhLive({ live, setLive, connected }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 18 }}>
       <div style={{ display: "grid", gap: 18 }}>
@@ -218,16 +294,22 @@ function PhLive({ live, setLive }) {
           </div>
         </PhPanel>
         <PhPanel title="Quick Trim">
+          {connected && (
+            <div style={{ fontFamily: PH.mono, fontSize: 9, color: PH.inkMute,
+              letterSpacing: "0.16em", marginBottom: 10 }}>
+              PHYSICAL KNOBS ONLY — POLL OVERWRITES UI CHANGES
+            </div>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-            {[["delay_time_ms","DLY",1000],["lfo_rate","RATE",255],["lfo_depth","DEPTH",255],
-              ["effect_level","EFFECT LEVEL",255],["feedback","FEEDBACK",255],["tilt","TILT",255]].map(([k,l,mx])=>(
-              <PhKnob key={k} value={live[k]} max={mx} label={l}
-                onChange={(v)=>setLive(L => ({...L, [k]: Math.round(v)}))} />
+            {PARAM_CATALOG.filter((p) => p.kind !== "enum").map((p) => (
+              <PhKnob key={p.key} value={live[p.key]} max={p.max} label={p.shortLabel}
+                onChange={connected ? null : (v) => setLive(L => ({ ...L, [p.key]: v }))} />
             ))}
           </div>
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px dashed ${PH.rule}` }}>
             <PhPedalSelect label="WAVE" options={WAVEFORM_LABELS}
-              value={live.lfo_waveform} onChange={(v) => setLive(L => ({ ...L, lfo_waveform: v }))} />
+              value={live.lfo_waveform}
+              onChange={connected ? null : (v) => setLive(L => ({ ...L, lfo_waveform: v }))} />
           </div>
         </PhPanel>
       </div>
@@ -242,8 +324,8 @@ function PhConsole({ log }) {
       <div style={{ background: "#050805", border: `1px solid ${PH.rule}`, padding: 16,
         fontFamily: PH.mono, fontSize: 12, lineHeight: 1.9, maxHeight: 520, overflowY: "auto" }}
         className="avd-scroll">
-        {log.map(([t,type,msg],i)=>(
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "78px 48px 1fr", gap: 10 }}>
+        {log.map(([id,t,type,msg])=>(
+          <div key={id} style={{ display: "grid", gridTemplateColumns: "78px 48px 1fr", gap: 10 }}>
             <span style={{ color: PH.inkMute }}>{t}</span>
             <span style={{ color: type==="TX"? PH.warn : type==="RX"? PH.accent
               : type==="INFO"? PH.ink : PH.danger }}>{type}</span>
@@ -258,5 +340,5 @@ function PhConsole({ log }) {
 
 Object.assign(window, {
   PH, PhPanel, PhTab, PhReadout, PhPedal, PhKnob, PhPedalSelect,
-  PhLive, PhConsole,
+  PhLive, PhConsole, PH_TAB_ID, PH_PANEL_ID,
 });

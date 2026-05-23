@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'self'">
   <title>Art Van Delay 2</title>
   <style>
     @font-face {
@@ -64,17 +66,21 @@
     .avd-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
     .avd-scroll::-webkit-scrollbar-track { background: transparent; }
     .avd-scroll::-webkit-scrollbar-thumb { background: rgba(255,26,136,0.2); border-radius: 4px; }
+    .avd-knob:focus { outline: none; }
+    .avd-knob:focus-visible { outline: 2px solid #ff1a88; outline-offset: 3px; }
+    .avd-tab:focus { outline: none; }
+    .avd-tab:focus-visible { outline: 2px solid #ff1a88; outline-offset: -2px; }
   </style>
   <script src="vendor/react.production.min.js"></script>
   <script src="vendor/react-dom.production.min.js"></script>
-  <script src="vendor/babel.min.js"></script>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" src="src/shared.jsx"></script>
-  <script type="text/babel" src="src/transport.jsx"></script>
-  <script type="text/babel" src="src/variant-phosphor.jsx"></script>
-  <script type="text/babel" src="src/firmware-updater.jsx"></script>
-  <script type="text/babel" src="src/app.jsx"></script>
+  <script src="src/pure.js"></script>
+  <script src="src/shared.js"></script>
+  <script src="src/transport.js"></script>
+  <script src="src/variant-phosphor.js"></script>
+  <script src="src/firmware-updater.js"></script>
+  <script src="src/app.js"></script>
 </body>
 </html>

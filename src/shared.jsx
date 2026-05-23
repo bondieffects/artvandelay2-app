@@ -1,15 +1,15 @@
 // Shared: mock device data (matches firmware JSON shape), LFO math, hooks.
 
 const PARAM_CATALOG = [
-  { id: 0, key: "delay_time_ms", label: "Delay Time",    unit: "ms",   min: 20,   max: 1000, kind: "time" },
-  { id: 1, key: "lfo_depth",     label: "LFO Depth",     unit: "",     min: 0,    max: 255,  kind: "8bit" },
-  { id: 2, key: "lfo_rate",      label: "LFO Rate",      unit: "",     min: 0,    max: 255,  kind: "8bit" },
-  { id: 3, key: "effect_level",  label: "Effect Level",  unit: "",     min: 0,    max: 255,  kind: "8bit" },
-  { id: 4, key: "feedback",      label: "Feedback",      unit: "",     min: 0,    max: 255,  kind: "8bit" },
-  { id: 5, key: "tilt",          label: "Tilt",          unit: "",     min: 0,    max: 255,  kind: "8bit" },
-  { id: 6, key: "subdivision",   label: "Subdivision",   unit: "",     min: 0,    max: 6,    kind: "enum",
+  { id: 0, key: "delay_time_ms", label: "Delay Time",   shortLabel: "DELAY",        unit: "ms", min: 20, max: 1000, kind: "time" },
+  { id: 1, key: "lfo_depth",     label: "LFO Depth",    shortLabel: "DEPTH",        unit: "",   min: 0,  max: 255,  kind: "8bit" },
+  { id: 2, key: "lfo_rate",      label: "LFO Rate",     shortLabel: "RATE",         unit: "",   min: 0,  max: 255,  kind: "8bit" },
+  { id: 3, key: "effect_level",  label: "Effect Level", shortLabel: "EFFECT LEVEL", unit: "",   min: 0,  max: 255,  kind: "8bit" },
+  { id: 4, key: "feedback",      label: "Feedback",     shortLabel: "FEEDBACK",     unit: "",   min: 0,  max: 255,  kind: "8bit" },
+  { id: 5, key: "tilt",          label: "Tilt",         shortLabel: "TILT",         unit: "",   min: 0,  max: 255,  kind: "8bit" },
+  { id: 6, key: "subdivision",   label: "Subdivision",  unit: "", min: 0, max: 6,   kind: "enum",
     options: ["1/1","1/2","1/3","1/4","1/6","1/8","1/16"] },
-  { id: 7, key: "lfo_waveform",  label: "Waveform",      unit: "",     min: 0,    max: 6,    kind: "enum",
+  { id: 7, key: "lfo_waveform",  label: "Waveform",     unit: "", min: 0, max: 6,   kind: "enum",
     options: ["Sine","Triangle","S-Shaped","Exponential","Smooth Rand","Skewed Tri","Trapezoid"] },
 ];
 
@@ -88,53 +88,17 @@ const MOCK_CONFIG = {
 };
 
 const MOCK_LOG = [
-  ["14:02:11", "INFO", "Serial port connected."],
-  ["14:02:11", "TX",   "> web info"],
-  ["14:02:11", "RX",   `< {"device":"ArtVanDelay2","firmware":{"major":1,"minor":4,"patch":2,"tweak":0}}`],
-  ["14:02:12", "TX",   "> web param get"],
-  ["14:02:12", "RX",   `< {"delay_time_ms":487,"lfo_depth":96,"lfo_rate":72,...}`],
-  ["14:02:12", "TX",   "> web preset list"],
-  ["14:02:13", "RX",   `< {"active":2,"dirty":true,"slots":[{"slot":0,"valid":true},...]}`],
-  ["14:02:14", "TX",   "> web config get"],
-  ["14:02:14", "RX",   `< {"expression_enabled":true,"expression_assignment":2,...}`],
-  ["14:04:02", "INFO", "Preset 3 loaded."],
+  [-1,  "14:02:11", "INFO", "Serial port connected."],
+  [-2,  "14:02:11", "TX",   "> web info"],
+  [-3,  "14:02:11", "RX",   `< {"device":"ArtVanDelay2","firmware":{"major":1,"minor":4,"patch":2,"tweak":0}}`],
+  [-4,  "14:02:12", "TX",   "> web param get"],
+  [-5,  "14:02:12", "RX",   `< {"delay_time_ms":487,"lfo_depth":96,"lfo_rate":72,...}`],
+  [-6,  "14:02:12", "TX",   "> web preset list"],
+  [-7,  "14:02:13", "RX",   `< {"active":2,"dirty":true,"slots":[{"slot":0,"valid":true},...]}`],
+  [-8,  "14:02:14", "TX",   "> web config get"],
+  [-9,  "14:02:14", "RX",   `< {"expression_enabled":true,"expression_assignment":2,...}`],
+  [-10, "14:04:02", "INFO", "Preset 3 loaded."],
 ];
-
-// ── LFO math (ported from app.js) ─────────────────────────────
-const lfoRateParamToHz = (r) => {
-  const minHz = 0.1, maxHz = 10.0;
-  const t = r / 255;
-  return Math.min(Math.max(minHz * ((maxHz / minHz) ** (t * t)), minHz), maxHz);
-};
-const lfoDepthParamToCents = (d) => (d * 25.0) / 255.0;
-const smoothstep = (v) => v * v * (3 - 2 * v);
-const triShape = (p) => (2 / Math.PI) * Math.asin(Math.sin(2 * Math.PI * p));
-const smoothRand = (p) => {
-  const pts = [-0.806507,0.440361,-0.294578,0.814458,-0.612048,0.121687,0.620482,-0.283133];
-  const n = pts.length, pos = p * n, seg = Math.floor(pos) % n, local = pos - seg;
-  const e = smoothstep(local);
-  return pts[seg] + (pts[(seg + 1) % n] - pts[seg]) * e;
-};
-const skewTri = (p) => { const s = 0.72; return p < s ? -1 + 2*(p/s) : 1 - 2*((p-s)/(1-s)); };
-const trap = (p) => { const r=0.18, h=0.32, f=0.18, ls=r+h+f;
-  if (p<r) return -1+2*(p/r);
-  if (p<r+h) return 1;
-  if (p<ls) return 1-2*((p-r-h)/f);
-  return -1; };
-const sampleWave = (id, phase) => {
-  const p = ((phase % 1) + 1) % 1;
-  const t = triShape(p);
-  switch (id) {
-    case 0: return Math.sin(2 * Math.PI * p);
-    case 1: return t;
-    case 2: return Math.tanh(2.4 * t) / Math.tanh(2.4);
-    case 3: return Math.sign(t || 1) * (Math.abs(t) ** 2.2);
-    case 4: return smoothRand(p);
-    case 5: return skewTri(p);
-    case 6: return trap(p);
-    default: return Math.sin(2 * Math.PI * p);
-  }
-};
 
 // ── LfoScope — canvas oscilloscope with configurable skin ──
 function LfoScope({ waveformId, rate, depth, width, height, skin = "phosphor" }) {
@@ -243,10 +207,22 @@ function LfoScope({ waveformId, rate, depth, width, height, skin = "phosphor" })
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height, skin]);
 
-  return <canvas ref={ref} style={{ display: "block", borderRadius: 6 }} />;
+  const waveLabel = WAVEFORM_LABELS[waveformId] || "sine";
+  return (
+    <div role="img" aria-label={`LFO oscilloscope: ${waveLabel} waveform`}
+      style={{ position: "relative" }}>
+      <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden",
+        clip: "rect(0,0,0,0)", whiteSpace: "nowrap" }}>
+        {`${waveLabel} LFO — ${lfoRateParamToHz(rate).toFixed(2)} Hz, ${lfoDepthParamToCents(depth).toFixed(1)} ct depth`}
+      </span>
+      <canvas ref={ref} aria-hidden="true" style={{ display: "block", borderRadius: 6 }} />
+    </div>
+  );
 }
+LfoScope = React.memo(LfoScope);
 
 // ── Knob — boutique rotary control, SVG ──
 function Knob({ value, min = 0, max = 255, size = 64, label, color = "#e8bb6b", trackColor = "rgba(255,255,255,0.08)", indicatorColor = "#fff", onChange }) {
@@ -285,12 +261,9 @@ function Knob({ value, min = 0, max = 255, size = 64, label, color = "#e8bb6b", 
   );
 }
 
-// ── Quick tab hook ──
-function useTab(initial = "live") { return React.useState(initial); }
-
 Object.assign(window, {
   PARAM_CATALOG, WAVEFORM_LABELS, MOCK_DEVICE, MOCK_LIVE, MOCK_PRESETS,
   MOCK_CONFIG, MOCK_LOG, lfoRateParamToHz, lfoDepthParamToCents, sampleWave,
-  LfoScope, Knob, useTab,
+  LfoScope, Knob,
   LATEST_FW_VERSION, fwVersionCompare, fwVersionString,
 });

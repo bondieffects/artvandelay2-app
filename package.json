@@ -5,18 +5,18 @@
   "description": "Self-contained Art Van Delay 2 Web MIDI editor and firmware updater.",
   "scripts": {
     "build": "node scripts/build.js",
-    "serve": "npx http-server dist -p 4173",
+    "serve": "http-server dist -p 4173",
     "test": "node tests/pure-functions.test.js"
   },
   "dependencies": {
-    "@babel/standalone": "7.29.0",
-    "@fontsource/dm-serif-display": "^5.2.8",
-    "@fontsource/inter": "^5.2.8",
-    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/dm-serif-display": "5.2.8",
+    "@fontsource/inter": "5.2.8",
+    "@fontsource/jetbrains-mono": "5.2.8",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
   "devDependencies": {
+    "esbuild": "^0.28.0",
     "http-server": "14.1.1"
   }
 }

@@ -18,7 +18,7 @@ function makeTransport() {
   let nextRequestId = 1;
 
   const pending = new Map();
-  const subs = { log: new Set(), status: new Set() };
+  const subs = { log: new Set(), status: new Set(), raw: new Set() };
   let status = "disconnected";
 
   const emit = (kind, payload) => subs[kind].forEach((fn) => { try { fn(payload); } catch {} });
@@ -59,6 +59,7 @@ function makeTransport() {
     input = nextInput;
     output = nextOutput;
     if (input) input.onmidimessage = onMidiMessage;
+    if (!input && !output && status === "connected") setStatus("disconnected");
   }
 
   async function connect() {
@@ -73,14 +74,15 @@ function makeTransport() {
       setStatus("connected");
       log("INFO", `USB MIDI connected: ${output.name || output.id}`);
     } catch (e) {
-      await disconnect();
+      await disconnect({ silent: true });
       setStatus("error", e.message);
       log("ERR", `Connect failed: ${e.message}`);
       throw e;
     }
   }
 
-  async function disconnect() {
+  async function disconnect({ silent = false } = {}) {
+    if (access) access.onstatechange = null;
     if (input) input.onmidimessage = null;
     input = null;
     output = null;
@@ -91,13 +93,14 @@ function makeTransport() {
       waiter.reject(new Error("MIDI disconnected."));
     }
     pending.clear();
-    setStatus("disconnected");
+    if (!silent) setStatus("disconnected");
   }
 
   function onMidiMessage(event) {
     const data = Array.from(event.data || []);
     if (data[0] !== 0xf0 || data[data.length - 1] !== 0xf7) return;
     const payload = data.slice(1, -1);
+    subs.raw.forEach((fn) => { try { fn(new Uint8Array(payload)); } catch {} });
     if (payload[0] !== WEB_MIDI.MFR_ID) return;
 
     if (payload[1] === WEB_MIDI.CMD_RESPONSE) {
@@ -108,6 +111,10 @@ function makeTransport() {
       clearTimeout(waiter.timer);
       const text = asciiFromBytes(payload.slice(3));
       log("RX", `< ${text}`);
+      if (text.length > 8192) {
+        waiter.reject(new Error(`Response too large (${text.length} bytes); ignoring.`));
+        return;
+      }
       try { waiter.resolve(JSON.parse(text)); }
       catch { waiter.reject(new Error(`Invalid JSON response: ${text}`)); }
       return;
@@ -122,9 +129,11 @@ function makeTransport() {
     if (!output) return Promise.reject(new Error("Not connected."));
 
     commandChain = commandChain.catch(() => {}).then(async () => {
-      const requestId = nextRequestId;
-      nextRequestId = (nextRequestId + 1) & 0x7f;
-      if (nextRequestId === 0) nextRequestId = 1;
+      let requestId = nextRequestId;
+      while (pending.has(requestId)) {
+        requestId = requestId === 127 ? 1 : requestId + 1;
+      }
+      nextRequestId = requestId === 127 ? 1 : requestId + 1;
 
       const frame = [0xf0, WEB_MIDI.MFR_ID, WEB_MIDI.CMD_REQUEST, requestId]
         .concat(bytesFromAscii(command), [0xf7]);
@@ -164,14 +173,19 @@ function makeTransport() {
     connect, disconnect,
     get status() { return status; },
     get connected() { return status === "connected"; },
-    onLog:    (fn) => subscribe("log", fn),
-    onStatus: (fn) => subscribe("status", fn),
+    onLog:           (fn) => subscribe("log", fn),
+    onStatus:        (fn) => subscribe("status", fn),
+    addRawListener:  (fn) => subscribe("raw", fn),
     ...api,
   };
 }
 
 function bytesFromAscii(text) {
-  return Array.from(text, (ch) => ch.charCodeAt(0) & 0x7f);
+  return Array.from(text, (ch) => {
+    const code = ch.charCodeAt(0);
+    if (code > 0x7f) throw new Error(`Non-ASCII character in MIDI command: "${ch}"`);
+    return code;
+  });
 }
 
 function asciiFromBytes(bytes) {
@@ -191,14 +205,16 @@ function useTransport() {
 
   const [status, setStatus] = React.useState(t.status);
   const [log, setLog] = React.useState([]);
+  const logIdRef = React.useRef(0);
 
   React.useEffect(() => {
     const offStatus = t.onStatus(({ status }) => setStatus(status));
     const offLog = t.onLog((entry) => setLog((L) => {
-      const next = L.concat([[entry.t, entry.type, entry.msg]]);
+      const id = ++logIdRef.current;
+      const next = L.concat([[id, entry.t, entry.type, entry.msg]]);
       return next.length > 500 ? next.slice(next.length - 500) : next;
     }));
-    return () => { offStatus(); offLog(); };
+    return () => { offStatus(); offLog(); t.disconnect(); };
   }, [t]);
 
   return { transport: t, status, connected: status === "connected", log };
