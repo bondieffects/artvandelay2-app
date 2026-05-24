@@ -21,11 +21,12 @@ try {
 
   copyFile(path.join(root, "index.html"), path.join(dist, "index.html"));
 
-  // Copy pure.js as-is (plain JS, no JSX transform needed)
+  // Copy plain JS files as-is (no JSX transform needed)
   copyFile(path.join(root, "src", "pure.js"), path.join(srcDist, "pure.js"));
+  copyFile(path.join(root, "src", "midi-cc-map.js"), path.join(srcDist, "midi-cc-map.js"));
 
   // Compile each JSX source file to plain JS (no runtime Babel needed)
-  const srcFiles = ["shared", "transport", "variant-phosphor", "firmware-updater", "app"];
+  const srcFiles = ["shared", "transport", "variant-phosphor", "firmware-updater", "midi-reference", "app"];
   for (const name of srcFiles) {
     const input = path.join(root, "src", `${name}.jsx`);
     const output = path.join(srcDist, `${name}.js`);

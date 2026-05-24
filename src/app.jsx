@@ -228,6 +228,11 @@ function PhosphorWired() {
               <PhConsole log={log.length ? log : MOCK_LOG} />
             </div>
           )}
+          {tab === "midi-ref" && (
+            <div role="tabpanel" id={PH_PANEL_ID("midi-ref")} aria-labelledby={PH_TAB_ID("midi-ref")}>
+              <PhMidiRef />
+            </div>
+          )}
         </div>
       </div>
     </div>
