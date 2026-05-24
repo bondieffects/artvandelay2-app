@@ -4,8 +4,8 @@
 
 // ── Helper UI pieces ──────────────────────────────────────────────────────────
 
-const row = (label, value, key) => (
-  <div key={key || label} style={{
+const row = (label, value) => (
+  <div style={{
     display: "grid", gridTemplateColumns: "140px 1fr", gap: 12,
     padding: "6px 0", borderBottom: `1px dotted ${PH.rule}`,
     fontFamily: PH.mono, fontSize: 12,
