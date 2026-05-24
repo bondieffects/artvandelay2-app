@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MIDI Reference — Layout Options</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0a0b;
+    color: #f5c8d8;
+    font-family: "Inter", system-ui, sans-serif;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #6a4850;
+    margin-bottom: 8px;
+  }
+  .question {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: #f5c8d8;
+    margin-bottom: 24px;
+    letter-spacing: 0.06em;
+  }
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+  .option {
+    border: 1px solid rgba(255,26,136,0.15);
+    border-radius: 4px;
+    background: #160f12;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+  }
+  .option:hover {
+    border-color: rgba(255,26,136,0.4);
+    box-shadow: 0 0 12px rgba(255,26,136,0.1);
+  }
+  .option.selected {
+    border-color: #ff1a88;
+    box-shadow: 0 0 18px rgba(255,26,136,0.25);
+  }
+  .opt-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #ff1a88;
+    padding: 10px 14px 6px;
+  }
+  .opt-title {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: #f5c8d8;
+    padding: 0 14px 6px;
+    letter-spacing: 0.1em;
+  }
+  .opt-desc {
+    font-size: 11px;
+    color: #6a4850;
+    padding: 0 14px 12px;
+    line-height: 1.5;
+  }
+  .mockup {
+    border-top: 1px solid rgba(255,26,136,0.1);
+    padding: 12px;
+    background: #0d0a0b;
+  }
+
+  /* Shared mockup pieces */
+  .m-tab-bar {
+    display: flex;
+    border-bottom: 1px solid rgba(255,26,136,0.1);
+    margin-bottom: 10px;
+  }
+  .m-tab {
+    font-family: monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    padding: 6px 10px;
+    color: #6a4850;
+    border-bottom: 2px solid transparent;
+  }
+  .m-tab.active {
+    color: #ff1a88;
+    border-bottom-color: #ff1a88;
+  }
+  .m-panel {
+    border: 1px solid rgba(255,26,136,0.1);
+    border-radius: 2px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .m-panel-hd {
+    font-family: monospace;
+    font-size: 8px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #ff1a88;
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(255,26,136,0.1);
+    background: #160f12;
+    display: flex;
+    justify-content: space-between;
+  }
+  .m-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: monospace;
+    font-size: 8px;
+  }
+  .m-table th {
+    color: #6a4850;
+    letter-spacing: 0.18em;
+    padding: 3px 6px;
+    text-align: left;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,26,136,0.08);
+  }
+  .m-table td {
+    padding: 3px 6px;
+    border-bottom: 1px dotted rgba(255,26,136,0.07);
+    color: #b07880;
+  }
+  .m-table td.cc { color: #ff1a88; }
+  .m-table td.val { color: #f5c8d8; }
+  .m-section-hd {
+    font-family: monospace;
+    font-size: 7px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: #ff1a88;
+    padding: 4px 6px 2px;
+    background: rgba(255,26,136,0.05);
+    border-bottom: 1px solid rgba(255,26,136,0.08);
+  }
+  .m-cc-card {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    padding: 3px 6px;
+    border-bottom: 1px dotted rgba(255,26,136,0.07);
+  }
+  .m-cc-num {
+    font-family: monospace;
+    font-size: 10px;
+    color: #ff1a88;
+    min-width: 22px;
+  }
+  .m-cc-name {
+    font-family: monospace;
+    font-size: 8px;
+    color: #f5c8d8;
+    flex: 1;
+  }
+  .m-cc-range {
+    font-family: monospace;
+    font-size: 7px;
+    color: #6a4850;
+  }
+  .m-cols { display: grid; grid-template-columns: 90px 1fr; gap: 6px; }
+  .m-index-item {
+    font-family: monospace;
+    font-size: 8px;
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 4px;
+    color: #b07880;
+  }
+  .m-index-item.active { color: #ff1a88; background: rgba(255,26,136,0.08); }
+  .m-badge {
+    font-family: monospace;
+    font-size: 8px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    background: rgba(255,26,136,0.12);
+    color: #ff1a88;
+  }
+  .m-note {
+    font-family: monospace;
+    font-size: 7px;
+    color: #6a4850;
+    padding: 3px 6px 4px;
+    line-height: 1.4;
+  }
+  .indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #160f12;
+    border: 1px solid rgba(255,26,136,0.3);
+    border-radius: 3px;
+    padding: 10px 14px;
+    font-family: monospace;
+    font-size: 11px;
+    color: #ff1a88;
+    letter-spacing: 0.1em;
+    display: none;
+  }
+  .indicator.visible { display: block; }
+</style>
+</head>
+<body>
+<h1>MIDI Reference — Layout</h1>
+<p class="question">Which layout works best for a quick-lookup reference?</p>
+
+<div class="options">
+
+  <!-- Option A: Flat dense table -->
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="opt-label">Option A</div>
+    <div class="opt-title">Flat Table</div>
+    <div class="opt-desc">Single scrollable table, all CCs + PC in one view. Dense, scannable, nothing hidden.</div>
+    <div class="mockup">
+      <div class="m-tab-bar">
+        <div class="m-tab">LIVE</div><div class="m-tab">PRESETS</div>
+        <div class="m-tab">CONFIG</div><div class="m-tab active">MIDI REF</div><div class="m-tab">…</div>
+      </div>
+      <div class="m-panel">
+        <div class="m-panel-hd"><span>CC Map · Channel 1</span><span style="color:#6a4850">13 messages</span></div>
+        <table class="m-table">
+          <tr><th>CC</th><th>Parameter</th><th>Range</th><th>Notes</th></tr>
+          <tr><td class="cc">20</td><td class="val">delay_time_ms</td><td>0–127 → 20–1000 ms</td><td></td></tr>
+          <tr><td class="cc">21</td><td class="val">lfo_depth</td><td>0–127 → 0–255</td><td></td></tr>
+          <tr><td class="cc">22</td><td class="val">lfo_rate</td><td>0–127 → 0–255</td><td></td></tr>
+          <tr><td class="cc">23</td><td class="val">effect_level</td><td>0–127 → 0–255</td><td></td></tr>
+          <tr><td class="cc">24</td><td class="val">feedback</td><td>0–127 → 0–255</td><td></td></tr>
+          <tr><td class="cc">25</td><td class="val">tilt</td><td>0–127 → 0–255</td><td></td></tr>
+          <tr><td class="cc">26</td><td class="val">subdivision</td><td>0–127 → index 0–6</td><td>enum</td></tr>
+          <tr><td class="cc">27</td><td class="val">lfo_waveform</td><td>0–127 → index 0–6</td><td>enum</td></tr>
+          <tr><td class="cc">28</td><td class="val">bypass</td><td>&lt;64=active ≥64=bypass</td><td></td></tr>
+          <tr><td class="cc">29</td><td class="val">expression</td><td>0–127 → 0–255</td><td></td></tr>
+          <tr><td class="cc">30</td><td class="val">tap tempo</td><td>any</td><td>each = tap</td></tr>
+          <tr><td class="cc">31</td><td class="val">bypass type</td><td>&lt;64=true ≥64=trails</td><td></td></tr>
+          <tr><td class="cc">32</td><td class="val">knob mode</td><td>—</td><td></td></tr>
+        </table>
+      </div>
+      <div class="m-panel">
+        <div class="m-panel-hd"><span>PC Map · Channel 1</span></div>
+        <table class="m-table">
+          <tr><th>PC</th><th>Action</th></tr>
+          <tr><td class="cc">0–7</td><td class="val">Load preset slot</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Sectioned with inline enum expansion -->
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="opt-label">Option B</div>
+    <div class="opt-title">Grouped Sections</div>
+    <div class="opt-desc">CCs split into three groups (Core, Control, Utility) — enum values expanded inline below each row.</div>
+    <div class="mockup">
+      <div class="m-tab-bar">
+        <div class="m-tab">LIVE</div><div class="m-tab">PRESETS</div>
+        <div class="m-tab">CONFIG</div><div class="m-tab active">MIDI REF</div><div class="m-tab">…</div>
+      </div>
+      <div class="m-panel">
+        <div class="m-panel-hd"><span>CC Map · Channel 1</span></div>
+        <div class="m-section-hd">◆ Core Parameters</div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 20</span><span class="m-cc-name">delay_time_ms</span><span class="m-cc-range">0–127 → 20–1000 ms</span></div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 21</span><span class="m-cc-name">lfo_depth</span><span class="m-cc-range">0–127 → 0–255</span></div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 22</span><span class="m-cc-name">lfo_rate</span><span class="m-cc-range">0–127 → 0–255</span></div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 26</span><span class="m-cc-name">subdivision</span><span class="m-cc-range">0–127 → 0–6</span></div>
+        <div class="m-note">↳ 0=1/1  1=1/2  2=1/3  3=1/4  4=1/6  5=1/8  6=1/16</div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 27</span><span class="m-cc-name">lfo_waveform</span><span class="m-cc-range">0–127 → 0–6</span></div>
+        <div class="m-note">↳ 0=Sine  1=Triangle  2=S-Shaped  3=Exp  4=Smooth Rand  5=Skewed Tri  6=Trapezoid</div>
+        <div class="m-section-hd">◆ Bypass &amp; Control</div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 28</span><span class="m-cc-name">bypass</span><span class="m-cc-range">&lt;64=active  ≥64=bypass</span></div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 29</span><span class="m-cc-name">expression</span><span class="m-cc-range">0–127 → 0–255</span></div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 30</span><span class="m-cc-name">tap tempo</span><span class="m-cc-range">any → tap</span></div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 31</span><span class="m-cc-name">bypass type</span><span class="m-cc-range">&lt;64=true  ≥64=trails</span></div>
+        <div class="m-section-hd">◆ Utility</div>
+        <div class="m-cc-card"><span class="m-cc-num">CC 32</span><span class="m-cc-name">knob mode</span><span class="m-cc-range">—</span></div>
+      </div>
+      <div class="m-panel">
+        <div class="m-panel-hd"><span>PC Map · Channel 1</span></div>
+        <div class="m-cc-card"><span class="m-cc-num">PC 0–7</span><span class="m-cc-name">Load preset slot</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Two-panel — index + detail -->
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="opt-label">Option C</div>
+    <div class="opt-title">Index + Detail</div>
+    <div class="opt-desc">Left: CC number index. Right: full detail panel for the selected message including enum values and notes.</div>
+    <div class="mockup">
+      <div class="m-tab-bar">
+        <div class="m-tab">LIVE</div><div class="m-tab">PRESETS</div>
+        <div class="m-tab">CONFIG</div><div class="m-tab active">MIDI REF</div><div class="m-tab">…</div>
+      </div>
+      <div class="m-cols">
+        <div class="m-panel" style="align-self:start">
+          <div class="m-panel-hd"><span>CC / PC</span></div>
+          <div class="m-index-item active"><span>CC 20</span><span>delay</span></div>
+          <div class="m-index-item"><span>CC 21</span><span>depth</span></div>
+          <div class="m-index-item"><span>CC 22</span><span>rate</span></div>
+          <div class="m-index-item"><span>CC 23</span><span>level</span></div>
+          <div class="m-index-item"><span>CC 24</span><span>fdbk</span></div>
+          <div class="m-index-item"><span>CC 25</span><span>tilt</span></div>
+          <div class="m-index-item"><span>CC 26</span><span>subdiv</span></div>
+          <div class="m-index-item"><span>CC 27</span><span>lfo wf</span></div>
+          <div class="m-index-item"><span>CC 28</span><span>bypass</span></div>
+          <div class="m-index-item"><span>CC 29</span><span>expr</span></div>
+          <div class="m-index-item"><span>CC 30</span><span>tap</span></div>
+          <div class="m-index-item"><span>CC 31</span><span>bp type</span></div>
+          <div class="m-index-item"><span>CC 32</span><span>knob</span></div>
+          <div class="m-index-item"><span>PC</span><span>preset</span></div>
+        </div>
+        <div>
+          <div class="m-panel">
+            <div class="m-panel-hd"><span>CC 20 · delay_time_ms</span><span class="m-badge">CORE</span></div>
+            <table class="m-table" style="margin:0">
+              <tr><td style="color:#6a4850;width:80px">CC Number</td><td class="val">20</td></tr>
+              <tr><td style="color:#6a4850">Channel</td><td class="val">1</td></tr>
+              <tr><td style="color:#6a4850">MIDI Range</td><td class="val">0 – 127</td></tr>
+              <tr><td style="color:#6a4850">Param Range</td><td class="val">20 – 1000 ms</td></tr>
+              <tr><td style="color:#6a4850">PARAM_ID</td><td class="val">0</td></tr>
+            </table>
+            <div class="m-note" style="padding:6px">Linearly mapped. Value 0 → 20 ms, value 127 → 1000 ms.</div>
+          </div>
+          <div class="m-panel">
+            <div class="m-panel-hd"><span>SysEx · web param get</span></div>
+            <div style="font-family:monospace;font-size:7px;color:#6a4850;padding:5px 6px;line-height:1.6">
+              F0 7D 10 &lt;id&gt; <span style="color:#ff1a88">77 65 62 20 70 61 72 61 6D 20 67 65 74</span> F7<br>
+              Response → delay_time_ms in JSON
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="indicator" id="indicator"></div>
+
+<script>
+  function toggleSelect(el) {
+    const choice = el.dataset.choice;
+    document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+    const ind = document.getElementById('indicator');
+    const titles = { a: 'Flat Table', b: 'Grouped Sections', c: 'Index + Detail' };
+    ind.textContent = `Selected: ${titles[choice]}`;
+    ind.classList.add('visible');
+    // Post to parent if available
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'click', choice, text: titles[choice] }, '*');
+    }
+    // Try to write to state file
+    try {
+      const ev = { type: 'click', choice, text: titles[choice], timestamp: Date.now() };
+      fetch('/__record', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(ev) }).catch(() => {});
+    } catch(e) {}
+  }
+</script>
+</body>
+</html>

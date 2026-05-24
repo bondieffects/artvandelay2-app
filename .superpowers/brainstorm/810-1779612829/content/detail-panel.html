@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MIDI Reference — Detail Panel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0a0b;
+    color: #f5c8d8;
+    font-family: "Inter", system-ui, sans-serif;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #6a4850;
+    margin-bottom: 8px;
+  }
+  .question {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: #f5c8d8;
+    margin-bottom: 24px;
+    letter-spacing: 0.06em;
+  }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .mockup-wrap {
+    border: 1px solid rgba(255,26,136,0.15);
+    border-radius: 4px;
+    background: #0d0a0b;
+    overflow: hidden;
+  }
+  .mockup-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #ff1a88;
+    padding: 10px 14px 6px;
+    background: #160f12;
+    border-bottom: 1px solid rgba(255,26,136,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mockup-desc {
+    font-size: 11px;
+    color: #6a4850;
+  }
+  .mockup-body { padding: 12px; }
+
+  /* App chrome */
+  .m-layout { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
+  .m-panel {
+    border: 1px solid rgba(255,26,136,0.1);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .m-panel-hd {
+    font-family: monospace;
+    font-size: 8px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #ff1a88;
+    padding: 5px 8px;
+    border-bottom: 1px solid rgba(255,26,136,0.1);
+    background: #160f12;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .m-badge {
+    font-family: monospace;
+    font-size: 7px;
+    padding: 1px 5px;
+    background: rgba(255,26,136,0.12);
+    color: #ff1a88;
+    border-radius: 2px;
+  }
+  .m-index-item {
+    font-family: monospace;
+    font-size: 8px;
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 6px;
+    color: #6a4850;
+    border-bottom: 1px dotted rgba(255,26,136,0.06);
+    cursor: pointer;
+  }
+  .m-index-item.active {
+    color: #ff1a88;
+    background: rgba(255,26,136,0.08);
+  }
+  .m-index-item .cc { color: #ff1a88; min-width: 30px; display: inline-block; }
+  .m-index-item.active .cc { color: #ff1a88; }
+
+  /* Detail rows */
+  .m-detail-row {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    font-family: monospace;
+    font-size: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px dotted rgba(255,26,136,0.07);
+    gap: 8px;
+    align-items: baseline;
+  }
+  .m-detail-row .lbl { color: #6a4850; }
+  .m-detail-row .val { color: #f5c8d8; }
+  .m-detail-row .val.accent { color: #ff1a88; }
+
+  /* Enum table */
+  .m-enum-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: monospace;
+    font-size: 8px;
+    margin: 0;
+  }
+  .m-enum-table th {
+    color: #6a4850;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,26,136,0.08);
+    background: rgba(255,26,136,0.03);
+  }
+  .m-enum-table td {
+    padding: 3px 8px;
+    border-bottom: 1px dotted rgba(255,26,136,0.06);
+  }
+  .m-enum-table td.midi { color: #ff1a88; }
+  .m-enum-table td.name { color: #f5c8d8; }
+  .m-enum-table tr:last-child td { border-bottom: none; }
+
+  /* Threshold viz */
+  .m-thresh {
+    display: flex;
+    gap: 0;
+    margin: 4px 8px 6px;
+    border-radius: 2px;
+    overflow: hidden;
+    height: 14px;
+    font-family: monospace;
+    font-size: 7px;
+  }
+  .m-thresh-a {
+    background: rgba(255,26,136,0.25);
+    color: #ff1a88;
+    display: flex; align-items: center; justify-content: center;
+    flex: 64;
+  }
+  .m-thresh-b {
+    background: rgba(255,26,136,0.08);
+    color: #6a4850;
+    display: flex; align-items: center; justify-content: center;
+    flex: 63;
+  }
+  .m-section-hd {
+    font-family: monospace;
+    font-size: 7px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #6a4850;
+    padding: 5px 8px 3px;
+    background: rgba(255,26,136,0.03);
+    border-bottom: 1px solid rgba(255,26,136,0.06);
+    border-top: 1px solid rgba(255,26,136,0.06);
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+<h1>MIDI Reference — Detail Panel</h1>
+<p class="question">Does this work for both continuous and enum parameters?</p>
+
+<div class="split">
+
+  <!-- Continuous param: CC 20 delay_time_ms -->
+  <div class="mockup-wrap">
+    <div class="mockup-label">
+      <span>Continuous Parameter</span>
+      <span class="mockup-desc">CC 20 selected</span>
+    </div>
+    <div class="mockup-body">
+      <div class="m-layout">
+        <!-- Index -->
+        <div class="m-panel" style="align-self:start">
+          <div class="m-panel-hd">CC / PC</div>
+          <div class="m-index-item active"><span class="cc">20</span><span>delay</span></div>
+          <div class="m-index-item"><span class="cc">21</span><span>depth</span></div>
+          <div class="m-index-item"><span class="cc">22</span><span>rate</span></div>
+          <div class="m-index-item"><span class="cc">23</span><span>level</span></div>
+          <div class="m-index-item"><span class="cc">24</span><span>fdbk</span></div>
+          <div class="m-index-item"><span class="cc">25</span><span>tilt</span></div>
+          <div class="m-index-item"><span class="cc">26</span><span>subdiv</span></div>
+          <div class="m-index-item"><span class="cc">27</span><span>waveform</span></div>
+          <div class="m-index-item"><span class="cc">28</span><span>bypass</span></div>
+          <div class="m-index-item"><span class="cc">29</span><span>expr</span></div>
+          <div class="m-index-item"><span class="cc">30</span><span>tap</span></div>
+          <div class="m-index-item"><span class="cc">31</span><span>bp type</span></div>
+          <div class="m-index-item"><span class="cc">32</span><span>knob</span></div>
+          <div class="m-index-item" style="border-top:1px solid rgba(255,26,136,0.12);margin-top:2px"><span class="cc" style="color:#ffc46a">PC</span><span>preset</span></div>
+        </div>
+        <!-- Detail -->
+        <div>
+          <div class="m-panel">
+            <div class="m-panel-hd">
+              <span>CC 20 · delay_time_ms</span>
+              <span class="m-badge">CONTINUOUS</span>
+            </div>
+            <div class="m-detail-row"><span class="lbl">CC Number</span><span class="val accent">20</span></div>
+            <div class="m-detail-row"><span class="lbl">Channel</span><span class="val">1</span></div>
+            <div class="m-detail-row"><span class="lbl">MIDI Range</span><span class="val">0 – 127</span></div>
+            <div class="m-detail-row"><span class="lbl">Maps To</span><span class="val">20 – 1000 ms</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enum param: CC 26 subdivision -->
+  <div class="mockup-wrap">
+    <div class="mockup-label">
+      <span>Enum Parameter</span>
+      <span class="mockup-desc">CC 26 selected</span>
+    </div>
+    <div class="mockup-body">
+      <div class="m-layout">
+        <!-- Index -->
+        <div class="m-panel" style="align-self:start">
+          <div class="m-panel-hd">CC / PC</div>
+          <div class="m-index-item"><span class="cc">20</span><span>delay</span></div>
+          <div class="m-index-item"><span class="cc">21</span><span>depth</span></div>
+          <div class="m-index-item"><span class="cc">22</span><span>rate</span></div>
+          <div class="m-index-item"><span class="cc">23</span><span>level</span></div>
+          <div class="m-index-item"><span class="cc">24</span><span>fdbk</span></div>
+          <div class="m-index-item"><span class="cc">25</span><span>tilt</span></div>
+          <div class="m-index-item active"><span class="cc">26</span><span>subdiv</span></div>
+          <div class="m-index-item"><span class="cc">27</span><span>waveform</span></div>
+          <div class="m-index-item"><span class="cc">28</span><span>bypass</span></div>
+          <div class="m-index-item"><span class="cc">29</span><span>expr</span></div>
+          <div class="m-index-item"><span class="cc">30</span><span>tap</span></div>
+          <div class="m-index-item"><span class="cc">31</span><span>bp type</span></div>
+          <div class="m-index-item"><span class="cc">32</span><span>knob</span></div>
+          <div class="m-index-item" style="border-top:1px solid rgba(255,26,136,0.12);margin-top:2px"><span class="cc" style="color:#ffc46a">PC</span><span>preset</span></div>
+        </div>
+        <!-- Detail: enum with value table -->
+        <div>
+          <div class="m-panel">
+            <div class="m-panel-hd">
+              <span>CC 26 · subdivision</span>
+              <span class="m-badge">ENUM</span>
+            </div>
+            <div class="m-detail-row"><span class="lbl">CC Number</span><span class="val accent">26</span></div>
+            <div class="m-detail-row"><span class="lbl">Channel</span><span class="val">1</span></div>
+            <div class="m-detail-row"><span class="lbl">MIDI Range</span><span class="val">0 – 127 → index 0 – 6</span></div>
+            <div class="m-section-hd">Values</div>
+            <table class="m-enum-table">
+              <tr><th>MIDI</th><th>Index</th><th>Name</th></tr>
+              <tr><td class="midi">0–18</td><td>0</td><td class="name">1/1</td></tr>
+              <tr><td class="midi">19–36</td><td>1</td><td class="name">1/2</td></tr>
+              <tr><td class="midi">37–54</td><td>2</td><td class="name">1/3</td></tr>
+              <tr><td class="midi">55–72</td><td>3</td><td class="name">1/4</td></tr>
+              <tr><td class="midi">73–90</td><td>4</td><td class="name">1/6</td></tr>
+              <tr><td class="midi">91–108</td><td>5</td><td class="name">1/8</td></tr>
+              <tr><td class="midi">109–127</td><td>6</td><td class="name">1/16</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:16px;font-family:monospace;font-size:10px;color:#6a4850;letter-spacing:0.1em">
+  ▸ Threshold CCs (bypass, bypass type) would show a bar split at 64 instead of a value table. PC shows slots 0–7.
+</div>
+
+</body>
+</html>
