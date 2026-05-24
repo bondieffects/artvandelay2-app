@@ -105,4 +105,6 @@ const MIDI_CC_MAP = [
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { MIDI_CC_MAP };
+} else {
+  window.MIDI_CC_MAP = MIDI_CC_MAP;
 }
