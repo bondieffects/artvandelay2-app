@@ -153,14 +153,16 @@ test("PARAM_CATALOG: enum entries have options.length === max - min + 1", () => 
 test("PARAM_CATALOG: MOCK_PRESETS values stay within declared bounds", () => {
   // Guard against the mock generator accidentally producing out-of-range values.
   const PRESET_NAMES = [
-    "Quarter Note Ghost","Tape Echo Warm","Bucket Brigade","Dub Chamber",
-    "Stuttered Subdiv","Modulated Plate","Haunted Hallway","Empty",
+    "Quarter Note Ghost", "Tape Echo Warm", "Bucket Brigade",
+    "Dub Chamber", "Stuttered Subdiv", "Modulated Plate",
+    "Haunted Hallway", "Slapback Room", "Long Tape Wash",
+    "Dark Dub", "Shimmer Mod", "Empty",
   ];
   const presets = PRESET_NAMES.map((name, i) => {
     if (name === "Empty") return null;
     const s = (i * 37 + 13);
     return {
-      delay_time_ms: 120 + ((s * 7) % 900),
+      delay_time_ms: Math.min(1000, 120 + ((s * 7) % 900)),
       lfo_depth:     (s * 11) % 256,
       lfo_rate:      (s * 13) % 256,
       effect_level:  100 + ((s * 17) % 150),

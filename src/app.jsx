@@ -33,7 +33,7 @@ function PhosphorWired() {
       const list = await transport.presetList();
       if (!list) return;
       // Build from the firmware's slot list so we show all slots the device reports,
-      // not just the 8 entries in MOCK_PRESETS. Preserve any already-fetched detail.
+      // not just the mock entries in MOCK_PRESETS. Preserve any already-fetched detail.
       setPresets((current) => {
         const bySlot = {};
         for (const p of current) bySlot[p.slot] = p;
@@ -311,7 +311,7 @@ function WiredPresets({ presets, selected, setSelected, draft, setDraft, activeS
   });
   return (
     <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 18 }}>
-      <PhPanel title="Bank · 16 slots" style={{ height: "fit-content" }}>
+      <PhPanel title="4 banks · 12 slots" style={{ height: "fit-content" }}>
         <div className="avd-scroll" style={{ maxHeight: 640, overflowY: "auto", margin: "-16px", padding: 12 }}>
           {presets.map((p) => {
             const isSel = p.slot === selected;

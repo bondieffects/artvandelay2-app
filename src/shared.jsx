@@ -51,9 +51,15 @@ const MOCK_LIVE = {
   preset_dirty: true,
 };
 
+const PRESET_SLOT_COUNT = 12;
+const PRESET_BANK_COUNT = 4;
+const PRESET_SLOTS_PER_BANK = 3;
+
 const PRESET_NAMES = [
-  "Quarter Note Ghost","Tape Echo Warm","Bucket Brigade","Dub Chamber",
-  "Stuttered Subdiv","Modulated Plate","Haunted Hallway","Empty",
+  "Quarter Note Ghost", "Tape Echo Warm", "Bucket Brigade",
+  "Dub Chamber", "Stuttered Subdiv", "Modulated Plate",
+  "Haunted Hallway", "Slapback Room", "Long Tape Wash",
+  "Dark Dub", "Shimmer Mod", "Empty",
 ];
 
 const MOCK_PRESETS = PRESET_NAMES.map((name, i) => {
@@ -64,7 +70,7 @@ const MOCK_PRESETS = PRESET_NAMES.map((name, i) => {
     slot: i,
     valid: true,
     name,
-    delay_time_ms: 120 + ((s * 7) % 900),
+    delay_time_ms: Math.min(1000, 120 + ((s * 7) % 900)),
     lfo_depth: (s * 11) % 256,
     lfo_rate: (s * 13) % 256,
     effect_level: 100 + ((s * 17) % 150),
@@ -263,7 +269,8 @@ function Knob({ value, min = 0, max = 255, size = 64, label, color = "#e8bb6b", 
 
 Object.assign(window, {
   PARAM_CATALOG, WAVEFORM_LABELS, MOCK_DEVICE, MOCK_LIVE, MOCK_PRESETS,
-  MOCK_CONFIG, MOCK_LOG, lfoRateParamToHz, lfoDepthParamToCents, sampleWave,
+  MOCK_CONFIG, MOCK_LOG, PRESET_SLOT_COUNT, PRESET_BANK_COUNT, PRESET_SLOTS_PER_BANK,
+  lfoRateParamToHz, lfoDepthParamToCents, sampleWave,
   LfoScope, Knob,
   LATEST_FW_VERSION, fwVersionCompare, fwVersionString,
 });
