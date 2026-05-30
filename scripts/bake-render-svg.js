@@ -19,4 +19,4 @@ function bake() {
 }
 
 if (require.main === module) bake();
-module.exports = { transformSvg };
+module.exports = { transformSvg, bake };

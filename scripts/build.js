@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const esbuild = require("esbuild");
+const { bake } = require("./bake-render-svg.js");
 
 const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
@@ -14,6 +15,7 @@ function copyFile(from, to) {
 }
 
 try {
+  bake();
   fs.rmSync(dist, { recursive: true, force: true });
   fs.mkdirSync(vendor, { recursive: true });
   fs.mkdirSync(fonts, { recursive: true });
