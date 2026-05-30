@@ -43,7 +43,7 @@ const PH_TAB_ID = (k) => `tab-${k}`;
 const PH_PANEL_ID = (k) => `tabpanel-${k}`;
 
 function PhTab({ tab, setTab }) {
-  const tabs = [["live","LIVE"],["presets","PRESETS"],["config","CONFIG"],["firmware","FIRMWARE"],["console","CONSOLE"],["midi-ref","MIDI REF"]];
+  const tabs = [["live","LIVE"],["presets","PRESETS"],["config","CONFIG"],["firmware","FIRMWARE"],["console","CONSOLE"],["midi-ref","MIDI REF"],["manual","MANUAL"]];
   const tablistRef = React.useRef(null);
 
   const move = (nextKey) => {

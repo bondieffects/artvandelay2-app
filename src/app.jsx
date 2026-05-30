@@ -233,6 +233,11 @@ function PhosphorWired() {
               <PhMidiRef />
             </div>
           )}
+          {tab === "manual" && (
+            <div role="tabpanel" id={PH_PANEL_ID("manual")} aria-labelledby={PH_TAB_ID("manual")}>
+              <PhManual />
+            </div>
+          )}
         </div>
       </div>
     </div>
