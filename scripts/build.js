@@ -24,9 +24,10 @@ try {
   // Copy plain JS files as-is (no JSX transform needed)
   copyFile(path.join(root, "src", "pure.js"), path.join(srcDist, "pure.js"));
   copyFile(path.join(root, "src", "midi-cc-map.js"), path.join(srcDist, "midi-cc-map.js"));
+  copyFile(path.join(root, "src", "render-svg-uri.js"), path.join(srcDist, "render-svg-uri.js"));
 
   // Compile each JSX source file to plain JS (no runtime Babel needed)
-  const srcFiles = ["shared", "transport", "variant-phosphor", "firmware-updater", "midi-reference", "app"];
+  const srcFiles = ["shared", "transport", "variant-phosphor", "firmware-updater", "midi-reference", "user-manual", "app"];
   for (const name of srcFiles) {
     const input = path.join(root, "src", `${name}.jsx`);
     const output = path.join(srcDist, `${name}.js`);
