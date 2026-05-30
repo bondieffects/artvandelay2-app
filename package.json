@@ -4,6 +4,8 @@
   "private": true,
   "description": "Self-contained Art Van Delay 2 Web MIDI editor and firmware updater.",
   "scripts": {
+    "bake-svg": "node scripts/bake-render-svg.js",
+    "prebuild": "node scripts/bake-render-svg.js",
     "build": "node scripts/build.js",
     "serve": "http-server dist -p 4173",
     "test": "node --test tests/*.test.js"
