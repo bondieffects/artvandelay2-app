@@ -131,13 +131,13 @@ function PhManualDiagram() {
   };
 
   return React.createElement('div', {
-    style: { position: 'relative', width: '100%', maxWidth: 640, margin: '0 auto 20px' },
+    style: { position: 'relative', width: '100%', maxWidth: 640, margin: '0 auto 20px', background: PH.bg },
   }, [
     React.createElement('img', {
       key: 'img',
       src: window.RENDER_SVG_URI,
       alt: 'Art Van Delay 2 panel',
-      style: { width: '100%', display: 'block', filter: 'invert(1)' },
+      style: { width: '100%', display: 'block', filter: 'grayscale(1) invert(1)' },
     }),
     React.createElement('div', {
       key: 'tint',
@@ -184,7 +184,7 @@ function PhManualDiagram() {
 
 // ─── Section components ───────────────────────────────────────────────────────
 
-function row(label, value) {
+function manualRow(label, value) {
   return React.createElement('div', {
     key: label,
     style: {
@@ -204,7 +204,7 @@ function prose(text) {
   }, text);
 }
 
-function sectionLabel(text) {
+function manualSectionLabel(text) {
   return React.createElement('div', {
     style: {
       fontFamily: PH.mono, fontSize: 9, letterSpacing: '0.24em',
@@ -213,7 +213,7 @@ function sectionLabel(text) {
   }, text);
 }
 
-function noteBox(text) {
+function manualNoteBox(text) {
   return React.createElement('div', {
     style: {
       marginTop: 10, padding: '8px 12px',
@@ -299,9 +299,9 @@ function PhManualSectionSubdiv() {
   ];
   return React.createElement(PhPanel, { title: 'Subdivision' }, [
     prose('Divides the tapped tempo period into smaller note values. The 5 LEDs indicate the current subdivision.'),
-    sectionLabel('Toggle gestures'),
-    noteBox('Flick toggle — step one value. Hold toggle — jump three values at once.'),
-    sectionLabel('Values'),
+    manualSectionLabel('Toggle gestures'),
+    manualNoteBox('Flick toggle — step one value. Hold toggle — jump three values at once.'),
+    manualSectionLabel('Values'),
     React.createElement('table', {
       key: 'tbl',
       style: { width: '100%', borderCollapse: 'collapse', fontFamily: PH.mono, fontSize: 12, marginTop: 6 },
@@ -333,53 +333,53 @@ function PhManualSectionSubdiv() {
 function PhManualSectionBypass() {
   return React.createElement(PhPanel, { title: 'Bypass Modes' }, [
     React.createElement('div', { key: 'rows' }, [
-      row('Active',       'Effect is engaged. Wet signal mixes with dry.'),
-      row('True Bypass',  'Relay physically disconnects the effect. LED → cyan.'),
-      row('Trails',       'Bypass engaged but wet signal decays naturally. LED → magenta.'),
+      manualRow('Active',       'Effect is engaged. Wet signal mixes with dry.'),
+      manualRow('True Bypass',  'Relay physically disconnects the effect. LED → cyan.'),
+      manualRow('Trails',       'Bypass engaged but wet signal decays naturally. LED → magenta.'),
     ]),
-    sectionLabel('Switching modes'),
-    noteBox('Hold SHIFT R + press BYPASS to toggle between True Bypass and Trails.'),
-    sectionLabel('Trails fade'),
-    noteBox('In Trails mode, double-tap BYPASS to fade the feedback to silence without re-engaging the effect.'),
+    manualSectionLabel('Switching modes'),
+    manualNoteBox('Hold SHIFT R + press BYPASS to toggle between True Bypass and Trails.'),
+    manualSectionLabel('Trails fade'),
+    manualNoteBox('In Trails mode, double-tap BYPASS to fade the feedback to silence without re-engaging the effect.'),
   ]);
 }
 
 function PhManualSectionTapTempo() {
   return React.createElement(PhPanel, { title: 'Tap Tempo · Feedback Hold' }, [
-    sectionLabel('Tap tempo'),
-    row('Method',    'Tap the TAP footswitch in rhythm. Pedal averages last 4 taps.'),
-    row('Weighting', 'Most recent tap counts most.'),
-    row('Range',     '40–400 BPM. 2-second pause resets the sequence.'),
-    row('LED',       'Tempo LED flashes on each registered tap.'),
-    row('Subdivision','Active subdivision is applied to the tapped period.'),
-    sectionLabel('Feedback hold'),
-    noteBox('Hold TAP for 500ms → feedback slams to 255. Release → feedback returns to its original value. Use to trigger a bloom of cascading echoes on demand.'),
+    manualSectionLabel('Tap tempo'),
+    manualRow('Method',    'Tap the TAP footswitch in rhythm. Pedal averages last 4 taps.'),
+    manualRow('Weighting', 'Most recent tap counts most.'),
+    manualRow('Range',     '40–400 BPM. 2-second pause resets the sequence.'),
+    manualRow('LED',       'Tempo LED flashes on each registered tap.'),
+    manualRow('Subdivision','Active subdivision is applied to the tapped period.'),
+    manualSectionLabel('Feedback hold'),
+    manualNoteBox('Hold TAP for 500ms → feedback slams to 255. Release → feedback returns to its original value. Use to trigger a bloom of cascading echoes on demand.'),
   ]);
 }
 
 function PhManualSectionPresets() {
   return React.createElement(PhPanel, { title: 'Preset System' }, [
     prose('12 presets across 4 banks of 3 slots (A, B, C). The 4 PRESET LEDs show the active bank.'),
-    sectionLabel('Loading a preset'),
-    noteBox('Short-press RECALL to reload the current active preset into the live buffer.'),
-    noteBox('Hold RECALL 2s → enter browse mode. TAP = slot A · RECALL = slot B · BYPASS = slot C. Hold RECALL + TAP to go bank down, RECALL + BYPASS to go bank up.'),
-    sectionLabel('Saving a preset'),
-    noteBox('In browse mode: navigate to your target slot, then hold SHIFT L for 1 second to commit the current live state.'),
-    sectionLabel('Bank LEDs'),
-    row('4 LEDs', 'One per bank. Active bank LED lights during browse mode.'),
+    manualSectionLabel('Loading a preset'),
+    manualNoteBox('Short-press RECALL to reload the current active preset into the live buffer.'),
+    manualNoteBox('Hold RECALL 2s → enter browse mode. TAP = slot A · RECALL = slot B · BYPASS = slot C. Hold RECALL + TAP to go bank down, RECALL + BYPASS to go bank up.'),
+    manualSectionLabel('Saving a preset'),
+    manualNoteBox('In browse mode: navigate to your target slot, then hold SHIFT L for 1 second to commit the current live state.'),
+    manualSectionLabel('Bank LEDs'),
+    manualRow('4 LEDs', 'One per bank. Active bank LED lights during browse mode.'),
   ]);
 }
 
 function PhManualSectionExpression() {
   return React.createElement(PhPanel, { title: 'Expression Pedal' }, [
     prose('Connect a TRS expression pedal to the EXPR/TAP jack. Configure in the CONFIG tab.'),
-    sectionLabel('CONFIG tab settings'),
-    row('expression_enabled',    'Enable or disable expression input.'),
-    row('expression_assignment', 'Which parameter the pedal controls.'),
-    row('expression_curve',      'Response shape: Linear, Logarithmic, or Exponential.'),
-    row('expression_auto_assign','When on, the last-tweaked parameter is auto-assigned.'),
-    row('calibration_min/max',   'Set to match your pedal\'s physical travel range (0–4095).'),
-    noteBox('COMMIT in the CONFIG tab sends changes to the pedal and stores them in config.'),
+    manualSectionLabel('CONFIG tab settings'),
+    manualRow('expression_enabled',    'Enable or disable expression input.'),
+    manualRow('expression_assignment', 'Which parameter the pedal controls.'),
+    manualRow('expression_curve',      'Response shape: Linear, Logarithmic, or Exponential.'),
+    manualRow('expression_auto_assign','When on, the last-tweaked parameter is auto-assigned.'),
+    manualRow('calibration_min/max',   'Set to match your pedal\'s physical travel range (0–4095).'),
+    manualNoteBox('COMMIT in the CONFIG tab sends changes to the pedal and stores them in config.'),
   ]);
 }
 
@@ -424,7 +424,7 @@ function PhManualSectionMIDI() {
         )
       ),
     ]),
-    noteBox('See the MIDI REF tab for the full CC map including 14-bit LSB pairs and enum value tables.'),
+    manualNoteBox('See the MIDI REF tab for the full CC map including 14-bit LSB pairs and enum value tables.'),
   ]);
 }
 
